@@ -4,3 +4,17 @@ dist/
 .env.*
 !.env.example
 .DS_Store
+
+# External thematic workspace data should never live in this repo,
+# but if it appears here by accident, do not let git stage it.
+/runner-config.yaml
+/workflow-config.yaml
+/work-queue.yaml
+/strategy/
+/evidence-bank/
+/work-items/
+/archive/
+/reports/
+/data/
+/workspace/
+/thematic-workspace/
