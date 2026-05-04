@@ -3,6 +3,7 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import { ensureDir, readYamlFile, writeJson, writeText } from '../../lib/files.js';
 import { createRunLogger } from '../../lib/run-log.js';
+import { loadRunnerConfig } from '../../lib/workspace-config.js';
 import { resolveWorkspaceRoot, runBacklogAudit, type AuditResult, type TopicRecord } from '../backlog-audit/index.js';
 import { runStageRunner } from '../stage-runner/index.js';
 
@@ -171,6 +172,7 @@ function loadStrategyEvidenceMap(topic: TopicRecord): Map<string, StrategyEviden
 
 function buildIntake(topic: TopicRecord, articleId: string, workspaceRoot: string) {
   const evidenceMap = loadStrategyEvidenceMap(topic);
+  const runnerConfig = loadRunnerConfig(workspaceRoot);
   const topicSourcePath = path.relative(workspaceRoot, topic.sourcePath);
   const evidenceRefs = topic.requiredEvidenceIds.map((id) => `${topicSourcePath}#${id}`);
   const firstPartyEvidence = topic.requiredEvidenceIds.map((id) => {
@@ -231,8 +233,8 @@ function buildIntake(topic: TopicRecord, articleId: string, workspaceRoot: strin
           }
         ],
     constraints: {
-      language: 'en',
-      geo_targets: ['US', 'EU'],
+      language: runnerConfig.editorial?.language ?? 'en',
+      geo_targets: runnerConfig.editorial?.geo_targets ?? ['US', 'EU'],
       do_not_publish_without_evidence: true
     },
     notes: `Auto-created from ${topic.program} / ${topic.cycleName}.`

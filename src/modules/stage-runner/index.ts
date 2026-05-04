@@ -5,6 +5,7 @@ import yaml from 'js-yaml';
 import { ensureDir, readYamlFile, writeJson, writeText } from '../../lib/files.js';
 import { generateText } from '../../lib/llm.js';
 import { createRunLogger } from '../../lib/run-log.js';
+import { loadRunnerConfig, resolveWorkspacePath, type RunnerConfig } from '../../lib/workspace-config.js';
 import { resolveWorkspaceRoot } from '../backlog-audit/index.js';
 
 interface WorkflowConfig {
@@ -87,6 +88,7 @@ interface StatusFile {
 interface StageContext {
   workspaceRoot: string;
   workflowConfig: WorkflowConfig;
+  runnerConfig: RunnerConfig;
   articleId: string;
   workItemPath: string;
   workItemDir: string;
@@ -160,6 +162,7 @@ function selectQueueItem(workspaceRoot: string, articleId?: string): WorkQueueIt
 function createContext(currentDir: string, options?: StageRunnerOptions): StageContext {
   const workspaceRoot = resolveWorkspaceRoot(currentDir, options?.workspaceRoot);
   const workflowConfig = loadWorkflowConfig(workspaceRoot);
+  const runnerConfig = loadRunnerConfig(workspaceRoot);
   const queueItem = selectQueueItem(workspaceRoot, options?.articleId);
   const workItemDir = path.join(workspaceRoot, queueItem.work_item_path);
   const intakePath = path.join(workItemDir, 'intake.yaml');
@@ -172,6 +175,7 @@ function createContext(currentDir: string, options?: StageRunnerOptions): StageC
   return {
     workspaceRoot,
     workflowConfig,
+    runnerConfig,
     articleId: queueItem.article_id,
     workItemPath: queueItem.work_item_path,
     workItemDir,
@@ -326,10 +330,20 @@ function gatherEvidenceBundle(context: StageContext): string {
 
 function buildSystemPrompt(): string {
   return [
-    'You are an editorial production agent for Glasgow Research Blog.',
-    'Write in English.',
-    'Audience: US and EU IT teams, founders, product leaders, B2B SaaS teams, agencies.',
-    'Keep a practical, blunt, evidence-led tone.',
+    'You are a production content agent.',
+    'Write clearly and avoid filler.',
+    'Do not invent evidence or public sources.',
+    'Keep public-facing output free of internal workflow artifacts.'
+  ].join(' ');
+}
+
+function buildEditorialSystemPrompt(context: StageContext): string {
+  const editorial = context.runnerConfig.editorial ?? {};
+  return [
+    `You are an editorial production agent for ${editorial.brand_name ?? 'the target website'}.`,
+    `Write in ${editorial.language ?? 'English'}.`,
+    `Audience: ${editorial.audience ?? 'professionals relevant to the target site'}.`,
+    `Tone: ${editorial.tone ?? 'practical, direct, evidence-led'}.`,
     'Do not mention internal repo files, evidence-bank, work-items, source packs, or unpublished artifacts in public-facing copy.',
     'Respect evidence boundaries and avoid fabricated claims.'
   ].join(' ');
@@ -353,6 +367,7 @@ async function runResearchStage(context: StageContext): Promise<void> {
   const response = await generateText(
     [
       { role: 'system', content: buildSystemPrompt() },
+      { role: 'system', content: buildEditorialSystemPrompt(context) },
       { role: 'user', content: prompt }
     ],
     { temperature: 0.2 }
@@ -395,6 +410,7 @@ async function runStrategyStage(context: StageContext): Promise<void> {
   const response = await generateText(
     [
       { role: 'system', content: buildSystemPrompt() },
+      { role: 'system', content: buildEditorialSystemPrompt(context) },
       { role: 'user', content: prompt }
     ],
     { temperature: 0.25 }
@@ -483,6 +499,7 @@ async function runWritingStage(context: StageContext): Promise<void> {
   const response = await generateText(
     [
       { role: 'system', content: buildSystemPrompt() },
+      { role: 'system', content: buildEditorialSystemPrompt(context) },
       { role: 'user', content: prompt }
     ],
     { temperature: 0.35 }
@@ -530,6 +547,7 @@ async function runEditingStage(context: StageContext): Promise<void> {
   const response = await generateText(
     [
       { role: 'system', content: buildSystemPrompt() },
+      { role: 'system', content: buildEditorialSystemPrompt(context) },
       { role: 'user', content: prompt }
     ],
     { temperature: 0.25 }
@@ -594,6 +612,7 @@ async function runPublisherStage(context: StageContext): Promise<{ slug: string;
   const response = await generateText(
     [
       { role: 'system', content: buildSystemPrompt() },
+      { role: 'system', content: buildEditorialSystemPrompt(context) },
       { role: 'user', content: prompt }
     ],
     { temperature: 0.2 }
@@ -603,16 +622,26 @@ async function runPublisherStage(context: StageContext): Promise<{ slug: string;
   const publishPackage = extractTag(response, 'publish_package');
   const finalArticleBody = extractTag(response, 'final_article');
   const frontmatter = parseFrontmatterYaml(frontmatterYaml);
+  if (context.runnerConfig.editorial?.author_name) {
+    frontmatter.author = context.runnerConfig.editorial.author_name;
+  }
+  if (context.runnerConfig.editorial?.author_slug) {
+    frontmatter.authorSlug = context.runnerConfig.editorial.author_slug;
+  }
+  if (context.runnerConfig.editorial?.default_category) {
+    frontmatter.category = context.runnerConfig.editorial.default_category;
+  }
   const slug = String(frontmatter.slug ?? '').trim();
   if (!slug) {
     throw new Error('Publisher stage did not produce a slug.');
   }
 
-  const finalArticle = `---\n${frontmatterYaml.trim()}\n---\n\n${finalArticleBody.trim()}\n`;
+  const normalizedFrontmatterYaml = yaml.dump(frontmatter, { lineWidth: 120, noRefs: true }).trim();
+  const finalArticle = `---\n${normalizedFrontmatterYaml}\n---\n\n${finalArticleBody.trim()}\n`;
   validatePublicContent(finalArticleBody);
 
   if (!context.dryRun) {
-    writeText(path.join(context.workItemDir, '5-publish', 'frontmatter.yaml'), `${frontmatterYaml.trim()}\n`);
+    writeText(path.join(context.workItemDir, '5-publish', 'frontmatter.yaml'), `${normalizedFrontmatterYaml}\n`);
     writeText(path.join(context.workItemDir, '5-publish', 'publish-package.md'), `${publishPackage}\n`);
     writeText(path.join(context.workItemDir, '5-publish', 'final-article.md'), finalArticle);
   }
@@ -666,9 +695,10 @@ async function runPublisherStage(context: StageContext): Promise<{ slug: string;
 }
 
 function publishArticleToBlog(context: StageContext, slug: string, finalArticle: string): string {
-  const blogContentDir = path.join(
+  const blogContentDir = resolveWorkspacePath(
     context.workspaceRoot,
-    context.workflowConfig.paths?.blog_content_dir ?? 'blog/src/content/blog'
+    context.runnerConfig.publishing?.blog_content_dir ?? context.workflowConfig.paths?.blog_content_dir,
+    'blog/src/content/blog'
   );
   ensureDir(blogContentDir);
   const blogFilePath = path.join(blogContentDir, `${slug}.md`);
@@ -676,7 +706,9 @@ function publishArticleToBlog(context: StageContext, slug: string, finalArticle:
   if (!context.dryRun) {
     writeText(blogFilePath, finalArticle);
     execFileSync('npm', ['run', 'build'], {
-      cwd: path.join(context.workspaceRoot, 'blog'),
+      cwd: context.runnerConfig.publishing?.blog_repo_root
+        ? resolveWorkspacePath(context.workspaceRoot, context.runnerConfig.publishing.blog_repo_root, 'blog')
+        : findGitRoot(path.dirname(blogFilePath)),
       stdio: 'pipe'
     });
   }
@@ -698,6 +730,13 @@ function getCurrentBranch(blogRepoDir: string): string {
   return execFileSync('git', ['branch', '--show-current'], { cwd: blogRepoDir, encoding: 'utf8' }).trim();
 }
 
+function findGitRoot(startDir: string): string {
+  return execFileSync('git', ['rev-parse', '--show-toplevel'], {
+    cwd: startDir,
+    encoding: 'utf8'
+  }).trim();
+}
+
 function getStagedPaths(blogRepoDir: string): string[] {
   const output = execFileSync('git', ['diff', '--cached', '--name-only'], {
     cwd: blogRepoDir,
@@ -707,7 +746,9 @@ function getStagedPaths(blogRepoDir: string): string[] {
 }
 
 function pushBlogCommit(context: StageContext, blogFilePath: string): void {
-  const blogRepoDir = path.join(context.workspaceRoot, 'blog');
+  const blogRepoDir = context.runnerConfig.publishing?.blog_repo_root
+    ? resolveWorkspacePath(context.workspaceRoot, context.runnerConfig.publishing.blog_repo_root, 'blog')
+    : findGitRoot(path.dirname(blogFilePath));
   const relativeArticlePath = path.relative(blogRepoDir, blogFilePath);
   const stagedPaths = getStagedPaths(blogRepoDir);
   const unrelatedStaged = stagedPaths.filter((entry) => entry !== relativeArticlePath);

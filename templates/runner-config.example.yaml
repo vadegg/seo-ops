@@ -1,0 +1,21 @@
+backlog_files:
+  - strategy/topic-backlog.yaml
+  - strategy/supporting-content-backlog.yaml
+
+evidence_index_file: evidence-bank/evidence-index.yaml
+
+editorial:
+  brand_name: Example Research
+  language: English
+  geo_targets:
+    - US
+    - EU
+  audience: Founders, product leaders, and B2B SaaS teams.
+  tone: Practical, direct, evidence-led.
+  author_name: Jane Founder
+  author_slug: jane
+  default_category: Research
+
+publishing:
+  blog_repo_root: /absolute/path/to/site-repo
+  blog_content_dir: /absolute/path/to/site-repo/src/content/blog

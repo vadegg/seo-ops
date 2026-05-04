@@ -17,17 +17,36 @@ Standalone automation repo for running the Glasgow-style SEO article pipeline ag
 
 This repo does not contain the blog content workspace itself. Instead, it points to an external workspace via `SEO_WORKSPACE_ROOT`.
 
+## Separation model
+
+- this git repo contains only code
+- topic data lives outside git in the external workspace
+- the site repo lives separately and receives published articles on the publish stage
+
+That means the following should live in the external workspace, not in this repo:
+
+- `runner-config.yaml`
+- `workflow-config.yaml`
+- `work-queue.yaml`
+- `strategy/`
+- `evidence-bank/`
+- `work-items/`
+- `archive/`
+- `reports/`
+
 ## Required workspace
 
 The external workspace must contain the current production structure, including:
 
 - `workflow-config.yaml`
+- `runner-config.yaml`
 - `work-queue.yaml`
 - `strategy/`
 - `evidence-bank/`
 - `archive/`
 - `work-items/`
-- `blog/`
+
+The site repo can live elsewhere if `runner-config.yaml` points `publishing.blog_repo_root` and `publishing.blog_content_dir` to absolute paths.
 
 ## Setup
 
@@ -36,6 +55,7 @@ The external workspace must contain the current production structure, including:
    - `SEO_WORKSPACE_ROOT`
    - `OPENAI_API_KEY`
    - optional `OPENAI_MODEL`
+3. Create `runner-config.yaml` in the external workspace from [`templates/runner-config.example.yaml`](./templates/runner-config.example.yaml)
 3. Install dependencies:
 
 ```bash

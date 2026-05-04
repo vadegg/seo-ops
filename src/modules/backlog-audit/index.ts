@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import yaml from 'js-yaml';
 import { ensureDir, readYamlFile, writeJson, writeText } from '../../lib/files.js';
+import { getBacklogFiles, loadRunnerConfig, resolveWorkspacePath } from '../../lib/workspace-config.js';
 
 export type TopicStatus =
   | 'published'
@@ -133,13 +134,15 @@ function readMarkdownFrontmatter(filePath: string): Record<string, unknown> | nu
 
 function collectPublishedKeys(workspaceRoot: string, workflowConfig: WorkflowConfig): Set<string> {
   const keys = new Set<string>();
-  const archiveDir = path.join(
+  const archiveDir = resolveWorkspacePath(
     workspaceRoot,
-    workflowConfig.paths?.archive_published_dir ?? 'archive/published'
+    workflowConfig.paths?.archive_published_dir,
+    'archive/published'
   );
-  const blogDir = path.join(
+  const blogDir = resolveWorkspacePath(
     workspaceRoot,
-    workflowConfig.paths?.blog_content_dir ?? 'blog/src/content/blog'
+    workflowConfig.paths?.blog_content_dir,
+    'blog/src/content/blog'
   );
 
   for (const frontmatterPath of listFilesRecursively(archiveDir).filter((filePath) => filePath.endsWith('frontmatter.yaml'))) {
@@ -206,7 +209,12 @@ function collectActiveKeys(workspaceRoot: string): Set<string> {
 }
 
 function collectIngestedSourcePaths(workspaceRoot: string): Set<string> {
-  const evidenceIndexPath = path.join(workspaceRoot, 'evidence-bank/evidence-index.yaml');
+  const runnerConfig = loadRunnerConfig(workspaceRoot);
+  const evidenceIndexPath = resolveWorkspacePath(
+    workspaceRoot,
+    runnerConfig.evidence_index_file,
+    'evidence-bank/evidence-index.yaml'
+  );
   const ingested = new Set<string>();
 
   if (!fileExists(evidenceIndexPath)) {
@@ -236,15 +244,14 @@ function hasStrongEvidenceForKeyword(evidenceIndex: EvidenceIndexFile, primaryKe
   });
 }
 
-function buildMarketTopics(workspaceRoot: string): TopicRecord[] {
-  const sourcePath = path.join(workspaceRoot, 'strategy/market-research-evidence-qualified-backlog-2026-03-24.yaml');
+function buildTopicsFromDocument(sourcePath: string): TopicRecord[] {
   const doc = readYamlFile<Record<string, any>>(sourcePath);
   const topics: TopicRecord[] = [];
 
   for (const cycle of doc.cycles ?? []) {
     for (const topic of cycle.topics ?? []) {
       topics.push({
-        program: doc.program ?? 'market-research',
+        program: doc.program ?? path.basename(sourcePath, path.extname(sourcePath)),
         cycleId: cycle.cycle_id ?? 'unknown',
         cycleName: cycle.name ?? 'Unknown cycle',
         launchOrder: topic.launch_order,
@@ -266,7 +273,7 @@ function buildMarketTopics(workspaceRoot: string): TopicRecord[] {
   for (const section of Object.values(doc.later_stage_topics ?? {}) as Array<Record<string, any>>) {
     for (const topic of section.topics ?? []) {
       topics.push({
-        program: doc.program ?? 'market-research',
+        program: doc.program ?? path.basename(sourcePath, path.extname(sourcePath)),
         cycleId: 'later-stage',
         cycleName: 'Later stage topics',
         topic: topic.topic,
@@ -283,31 +290,28 @@ function buildMarketTopics(workspaceRoot: string): TopicRecord[] {
     }
   }
 
-  return topics;
-}
-
-function buildAiTopics(workspaceRoot: string): TopicRecord[] {
-  const sourcePath = path.join(workspaceRoot, 'strategy/ai-research-offcycle-backlog-2026-03-27.yaml');
-  const doc = readYamlFile<Record<string, any>>(sourcePath);
   const cycleNameById = new Map<string, string>(
     (doc.cycles ?? []).map((cycle: Record<string, any>) => [cycle.cycle_id, cycle.name ?? cycle.cycle_id])
   );
+  for (const topic of doc.candidate_articles ?? []) {
+    topics.push({
+      program: doc.program ?? path.basename(sourcePath, path.extname(sourcePath)),
+      cycleId: topic.cycle_id ?? 'unknown',
+      cycleName: cycleNameById.get(topic.cycle_id) ?? 'Unknown cycle',
+      topic: topic.topic,
+      primaryKeyword: topic.primary_keyword,
+      recommendedProcess: topic.process_mode,
+      sourceType: 'ai',
+      sourcePath,
+      rawStatus: topic.operational_status ?? 'unknown',
+      effectiveStatus: 'unknown',
+      reason: '',
+      requiredEvidenceIds: [],
+      sourceMaterials: topic.source_materials ?? []
+    });
+  }
 
-  return (doc.candidate_articles ?? []).map((topic: Record<string, any>) => ({
-    program: doc.program ?? 'ai-research-offcycle',
-    cycleId: topic.cycle_id ?? 'unknown',
-    cycleName: cycleNameById.get(topic.cycle_id) ?? 'Unknown cycle',
-    topic: topic.topic,
-    primaryKeyword: topic.primary_keyword,
-    recommendedProcess: topic.process_mode,
-    sourceType: 'ai',
-    sourcePath,
-    rawStatus: topic.operational_status ?? 'unknown',
-    effectiveStatus: 'unknown',
-    reason: '',
-    requiredEvidenceIds: [],
-    sourceMaterials: topic.source_materials ?? []
-  }));
+  return topics;
 }
 
 function classifyTopic(
@@ -442,13 +446,18 @@ export function resolveWorkspaceRoot(currentDir: string, explicitWorkspaceRoot?:
 export function runBacklogAudit(currentDir: string, options?: { workspaceRoot?: string; minReadyTopics?: number }): AuditResult {
   const workspaceRoot = resolveWorkspaceRoot(currentDir, options?.workspaceRoot);
   const workflowConfig = readYamlFile<WorkflowConfig>(path.join(workspaceRoot, 'workflow-config.yaml'));
-  const evidenceIndex = readYamlFile<EvidenceIndexFile>(path.join(workspaceRoot, 'evidence-bank/evidence-index.yaml'));
+  const runnerConfig = loadRunnerConfig(workspaceRoot);
+  const evidenceIndex = readYamlFile<EvidenceIndexFile>(
+    resolveWorkspacePath(workspaceRoot, runnerConfig.evidence_index_file, 'evidence-bank/evidence-index.yaml')
+  );
   const publishedKeys = collectPublishedKeys(workspaceRoot, workflowConfig);
   const activeKeys = collectActiveKeys(workspaceRoot);
   const ingestedSourcePaths = collectIngestedSourcePaths(workspaceRoot);
   const minReadyTopics = options?.minReadyTopics ?? 7;
 
-  const topics = [...buildMarketTopics(workspaceRoot), ...buildAiTopics(workspaceRoot)].map((topic) =>
+  const topics = getBacklogFiles(workspaceRoot, runnerConfig)
+    .flatMap((sourcePath) => buildTopicsFromDocument(sourcePath))
+    .map((topic) =>
     classifyTopic(topic, publishedKeys, activeKeys, ingestedSourcePaths, evidenceIndex)
   );
 
