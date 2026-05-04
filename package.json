@@ -1,0 +1,23 @@
+{
+  "name": "seo-daily-agent-runner",
+  "version": "0.1.0",
+  "description": "Standalone daily SEO article runner for an external SEO workspace.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "backlog": "tsx src/cli/index.ts backlog",
+    "daily": "tsx src/cli/index.ts daily",
+    "stage": "tsx src/cli/index.ts stage"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "js-yaml": "^4.1.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
