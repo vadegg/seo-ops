@@ -1,0 +1,42 @@
+version: 1
+created_at: "2026-01-01"
+program: "example-research-program"
+
+cycles:
+  - cycle_id: "ER-C1"
+    name: "Customer research authority"
+    goal: "Build authority around practical customer research."
+    topics:
+      - launch_order: 1
+        status: "ready"
+        topic: "Customer Research Methods for Product Teams"
+        topic_slug: "customer-research-methods-for-product-teams"
+        cluster: "customer-research"
+        primary_keyword: "customer research methods"
+        secondary_keywords:
+          - "customer research techniques"
+          - "types of customer research"
+        search_intent: "informational"
+        icp_or_audience: "Founders and product leaders."
+        article_type: "pillar"
+        recommended_process: "C"
+        information_gain_hook: "Connect methods to real decision types instead of repeating textbook definitions."
+        desired_cta: "Invite teams to review their research workflow before a major decision."
+        required_evidence_ids:
+          - "EV-001"
+        required_evidence_minimum: "At least one strong first-party pattern."
+        required_evidence_tags:
+          - "customer_research"
+          - "decision_quality"
+        allowed_sources:
+          - "First-hand notes"
+          - "Primary public sources"
+        internal_links_candidates: []
+        next_action: "Create a work-item when the daily runner selects this topic."
+
+evidence_bank:
+  - evidence_id: "EV-001"
+    type: "pattern"
+    one_liner: "Teams often validate too late, after most strategic bets are already locked in."
+    where: "Anonymized founder and product team notes."
+    strength: "strong"

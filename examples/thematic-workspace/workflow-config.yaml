@@ -1,0 +1,36 @@
+version: 1
+
+mode:
+  autonomy: assisted
+  publish_to_blog: false
+  require_final_human_approval: true
+  hitl_on_process_c: true
+  hitl_on_missing_evidence: true
+
+evidence_bank:
+  source_scope: raw_only
+  include_published_articles: false
+  scan_inbox_when_index_is_weak: true
+
+concurrency:
+  research: 1
+  strategy: 1
+  writing: 1
+  editing: 1
+  publishing: 1
+  per_article: 1
+
+naming:
+  article_id_format: "YYMMDD-<topic-slug>-N"
+
+cleanup:
+  published_archive_mode: slim_package
+  dropped_archive_mode: summary_only
+  remove_active_work_item_after_archive: true
+
+paths:
+  work_items_dir: work-items
+  archive_published_dir: archive/published
+  archive_dropped_dir: archive/dropped
+  evidence_bank_dir: evidence-bank
+  evidence_index_file: evidence-bank/evidence-index.yaml

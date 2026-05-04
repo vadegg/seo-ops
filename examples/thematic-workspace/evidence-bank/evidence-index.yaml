@@ -1,0 +1,31 @@
+version: 1
+updated_at: "2026-01-01T00:00:00Z"
+
+policy:
+  source_scope: raw_only
+  include_published_articles: false
+  notes:
+    - "Published articles are outputs, not evidence inputs."
+
+items:
+  - evidence_id: "EV-001"
+    title: "Direct founder notes on decision mistakes"
+    source_kind: "note"
+    status: "ready"
+    source_path: "evidence-bank/raw/founder-notes-2026-01-01.md"
+    confidentiality: "anonymized_only"
+    usable_for:
+      topics:
+        - "customer research methods"
+      article_types:
+        - "pillar"
+        - "how-to"
+    summary: "Anonymized notes with recurring mistakes and decision patterns."
+    extractable_evidence:
+      - claim: "Teams often validate too late, after most strategic bets are already locked in."
+        evidence_type: "pattern"
+        strength: "strong"
+        usage_mode: "pattern_only"
+        suggested_keywords:
+          - "customer research methods"
+    last_reviewed_at: "2026-01-01T00:00:00Z"
