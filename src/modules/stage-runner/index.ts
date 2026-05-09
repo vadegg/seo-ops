@@ -631,6 +631,9 @@ async function runPublisherStage(context: StageContext): Promise<{ slug: string;
   if (context.runnerConfig.editorial?.default_category) {
     frontmatter.category = context.runnerConfig.editorial.default_category;
   }
+  if (typeof context.intake.primary_keyword === 'string' && context.intake.primary_keyword.trim()) {
+    frontmatter.primary_keyword = context.intake.primary_keyword.trim();
+  }
   const slug = String(frontmatter.slug ?? '').trim();
   if (!slug) {
     throw new Error('Publisher stage did not produce a slug.');

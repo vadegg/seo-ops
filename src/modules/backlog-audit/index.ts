@@ -132,6 +132,23 @@ function readMarkdownFrontmatter(filePath: string): Record<string, unknown> | nu
   return (yaml.load(match[1]) as Record<string, unknown>) ?? null;
 }
 
+function addNormalizedKeys(keys: Set<string>, values: Array<string | undefined>): void {
+  for (const value of values) {
+    const normalized = normalizeKey(value);
+    if (normalized) {
+      keys.add(normalized);
+    }
+  }
+}
+
+function extractStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === 'string');
+}
+
 function collectPublishedKeys(workspaceRoot: string, workflowConfig: WorkflowConfig): Set<string> {
   const keys = new Set<string>();
   const archiveDir = resolveWorkspacePath(
@@ -150,26 +167,19 @@ function collectPublishedKeys(workspaceRoot: string, workflowConfig: WorkflowCon
     const slug = typeof frontmatter.slug === 'string' ? frontmatter.slug : '';
     const title = typeof frontmatter.title === 'string' ? frontmatter.title : '';
     const primaryKeyword = typeof frontmatter.primary_keyword === 'string' ? frontmatter.primary_keyword : '';
+    const tags = extractStringArray(frontmatter.tags);
 
-    [slug, title, primaryKeyword].forEach((value) => {
-      const normalized = normalizeKey(value);
-      if (normalized) {
-        keys.add(normalized);
-      }
-    });
+    addNormalizedKeys(keys, [slug, title, primaryKeyword, ...tags]);
   }
 
   for (const markdownPath of listFilesRecursively(blogDir).filter((filePath) => filePath.endsWith('.md'))) {
     const frontmatter = readMarkdownFrontmatter(markdownPath);
     const slug = typeof frontmatter?.slug === 'string' ? frontmatter.slug : path.basename(markdownPath, '.md');
     const title = typeof frontmatter?.title === 'string' ? frontmatter.title : '';
+    const primaryKeyword = typeof frontmatter?.primary_keyword === 'string' ? frontmatter.primary_keyword : '';
+    const tags = extractStringArray(frontmatter?.tags);
 
-    [slug, title, path.basename(markdownPath, '.md')].forEach((value) => {
-      const normalized = normalizeKey(value);
-      if (normalized) {
-        keys.add(normalized);
-      }
-    });
+    addNormalizedKeys(keys, [slug, title, primaryKeyword, path.basename(markdownPath, '.md'), ...tags]);
   }
 
   return keys;
