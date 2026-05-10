@@ -102,6 +102,9 @@ interface StageContext {
   push: boolean;
 }
 
+const META_DESCRIPTION_MIN_LENGTH = 150;
+const META_DESCRIPTION_MAX_LENGTH = 160;
+
 function fileExists(filePath: string): boolean {
   return fs.existsSync(filePath);
 }
@@ -588,6 +591,29 @@ function validatePublicContent(articleMarkdown: string): void {
   }
 }
 
+function normalizeMetaDescription(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
+function validateMetaDescription(value: unknown): string {
+  const description = normalizeMetaDescription(String(value ?? ''));
+
+  if (!description) {
+    throw new Error('Publisher stage did not produce a meta description.');
+  }
+
+  if (
+    description.length < META_DESCRIPTION_MIN_LENGTH ||
+    description.length > META_DESCRIPTION_MAX_LENGTH
+  ) {
+    throw new Error(
+      `Meta description must be ${META_DESCRIPTION_MIN_LENGTH}-${META_DESCRIPTION_MAX_LENGTH} characters. Received ${description.length}.`
+    );
+  }
+
+  return description;
+}
+
 async function runPublisherStage(context: StageContext): Promise<{ slug: string; blogFilePath?: string }> {
   const editedDraft = readText(path.join(context.workItemDir, '4-editing', 'draft-edited-v1.md'));
   const prompt = [
@@ -596,6 +622,7 @@ async function runPublisherStage(context: StageContext): Promise<{ slug: string;
     '<publish_package>...</publish_package>',
     '<final_article>...</final_article>',
     'Frontmatter YAML must contain slug, title, description, pubDate, author, authorSlug, category, tags.',
+    `Description must be a search-ready meta description with ${META_DESCRIPTION_MIN_LENGTH}-${META_DESCRIPTION_MAX_LENGTH} characters.`,
     'Wrap every scalar string value in double quotes.',
     `Use pubDate "${new Date().toISOString()}".`,
     'Final article must be public-safe markdown body without frontmatter.',
@@ -634,6 +661,7 @@ async function runPublisherStage(context: StageContext): Promise<{ slug: string;
   if (typeof context.intake.primary_keyword === 'string' && context.intake.primary_keyword.trim()) {
     frontmatter.primary_keyword = context.intake.primary_keyword.trim();
   }
+  frontmatter.description = validateMetaDescription(frontmatter.description);
   const slug = String(frontmatter.slug ?? '').trim();
   if (!slug) {
     throw new Error('Publisher stage did not produce a slug.');
