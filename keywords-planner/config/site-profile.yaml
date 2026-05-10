@@ -1,0 +1,33 @@
+site_name: "Glasgow Research"
+site_url: "https://glasgow.works"
+blog_url: "https://blog.glasgow.works"
+language: "en"
+target_markets:
+  - "US"
+  - "EU"
+audiences:
+  - "Founders"
+  - "Product leaders"
+  - "B2B SaaS teams"
+  - "Growth teams"
+core_topics:
+  - "Product research"
+  - "Customer interviews"
+  - "JTBD interviews"
+  - "Market validation"
+  - "Go-to-market research"
+  - "Research systems"
+excluded_topics:
+  - "General management"
+  - "Lifestyle"
+  - "Politics"
+  - "Esoterica"
+  - "Broad AI hot takes"
+service_keywords:
+  - "research"
+  - "interviews"
+  - "validation"
+  - "jtbd"
+  - "positioning"
+  - "discovery"
+  - "market"

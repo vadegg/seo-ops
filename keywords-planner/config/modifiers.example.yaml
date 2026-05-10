@@ -1,0 +1,22 @@
+generic:
+  - "how to"
+  - "template"
+  - "example"
+  - "checklist"
+  - "framework"
+  - "mistakes"
+  - "questions"
+  - "guide"
+  - "vs"
+  - "tools"
+audience:
+  - "for founders"
+  - "for startups"
+  - "for b2b saas"
+  - "for product teams"
+intent:
+  - "interview"
+  - "research"
+  - "validation"
+  - "analysis"
+  - "process"

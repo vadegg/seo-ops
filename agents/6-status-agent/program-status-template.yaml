@@ -1,0 +1,42 @@
+generated_at: "<timestamp>"
+
+totals:
+  cycles_defined: 0
+  cycles_launched: 0
+  cycles_completed: 0
+  cycles_not_started: 0
+  articles_published: 0
+  articles_active: 0
+  articles_stuck: 0
+
+cycles:
+  - cycle_id: "<cycle_id>"
+    name: "<name>"
+    status: "<not_started|in_progress|completed|parked>"
+    published_count: 0
+    active_count: 0
+    remaining_count: 0
+    remaining_topics: []
+    notes: "<short note>"
+
+active_or_stuck_articles:
+  - article_id: "<article_id>"
+    cycle_id: "<cycle_id>"
+    current_stage: "<stage>"
+    state: "<state>"
+    next_actor: "<actor>"
+    blocking_issues: []
+    recommended_move: "<next move>"
+
+next_best_step: "<one concrete next action>"
+
+potential:
+  unlaunched_candidate_articles:
+    - topic: "<topic>"
+      primary_keyword: "<keyword>"
+      cycle_id: "<cycle_id>"
+  parked_topics:
+    - topic: "<topic>"
+      primary_keyword: "<keyword>"
+  notes:
+    - "<assessment>"

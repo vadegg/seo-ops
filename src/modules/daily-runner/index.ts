@@ -530,8 +530,10 @@ export async function runDailyRunner(currentDir: string, options?: DailyRunnerOp
       );
     }
 
+    const shouldRunStages = Boolean(options?.runStages) && !Boolean(options?.dryRun);
+
     const provisional: DailyRunnerResult = {
-      status: options?.runStages ? 'advanced_new_work_item' : 'created_work_item',
+      status: shouldRunStages ? 'advanced_new_work_item' : 'created_work_item',
       workspaceRoot,
       articleId,
       workItemPath,
@@ -542,7 +544,14 @@ export async function runDailyRunner(currentDir: string, options?: DailyRunnerOp
       logPath: ''
     };
 
-    if (options?.runStages) {
+    if (options?.runStages && options?.dryRun) {
+      runLog.addStep(
+        'Skip stage runner in dry-run mode',
+        `Dry-run did not persist ${articleId}, so stage advancement was intentionally skipped.`
+      );
+    }
+
+    if (shouldRunStages) {
       runLog.addStep('Advance new work item', `Running stage runner for ${articleId}.`);
       const stageResult = await runStageRunner(currentDir, {
         workspaceRoot: options?.workspaceRoot,

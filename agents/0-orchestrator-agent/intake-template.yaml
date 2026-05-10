@@ -1,0 +1,32 @@
+article_id: ""
+created_at: ""
+created_by: "0-orchestrator-agent"
+source:
+  type: "human-brief"
+  run_id: ""
+  source_path: ""
+topic: ""
+topic_slug: ""
+cluster: ""
+primary_keyword: ""
+secondary_keywords: []
+search_intent: "unknown"
+icp_or_audience: ""
+article_type: "how-to"
+desired_cta: ""
+internal_links: []
+allowed_sources: []
+evidence_bank_refs: []
+evidence_search_notes: ""
+first_party_evidence:
+  - type: "experience"
+    note: ""
+    source_path: ""
+    usable_in_article: false
+constraints:
+  language: "en"
+  geo_targets:
+    - "US"
+    - "EU"
+  do_not_publish_without_evidence: true
+notes: ""

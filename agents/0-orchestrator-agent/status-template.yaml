@@ -1,0 +1,19 @@
+article_id: ""
+state: "queued"
+current_stage: "intake"
+current_owner: "0-orchestrator-agent"
+next_actor: "1-research-agent"
+latest_artifact: ""
+latest_approved_artifact: ""
+approvals:
+  topic_gate: "pending"
+  outline: "pending"
+  final: "pending"
+process_mode: ""
+publish:
+  publish_to_blog: false
+  require_final_human_approval: true
+blocking_issues: []
+cleanup:
+  status: "active"
+

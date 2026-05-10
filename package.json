@@ -1,7 +1,7 @@
 {
-  "name": "seo-daily-agent-runner",
+  "name": "seo-ops",
   "version": "0.1.0",
-  "description": "Standalone daily SEO article runner for an external SEO workspace.",
+  "description": "SEO Ops core: agents, pipeline orchestration, backlog audit, and article stage automation.",
   "private": true,
   "type": "module",
   "scripts": {

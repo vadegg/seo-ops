@@ -1,0 +1,22 @@
+generic_prefixes:
+  - "how to"
+generic_suffixes:
+  - "template"
+  - "example"
+  - "checklist"
+  - "framework"
+  - "mistakes"
+  - "questions"
+  - "guide"
+  - "tools"
+audience_suffixes:
+  - "for founders"
+  - "for startups"
+  - "for b2b saas"
+  - "for product teams"
+intent_suffixes:
+  - "interview"
+  - "research"
+  - "validation"
+  - "analysis"
+  - "process"

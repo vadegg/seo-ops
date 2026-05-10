@@ -1,0 +1,4 @@
+keyword,source,include,priority_hint,notes
+product research,seed,true,high,
+customer interview questions,expanded,true,medium,
+market analysis,manual,false,low,too broad for v1
