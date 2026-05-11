@@ -63,6 +63,8 @@ interface DailyRunnerResult {
   topic?: string;
   selectionMode?: 'publishable' | 'needs_evidence_ingest';
   maintenanceTaskPath?: string;
+  selectedReason?: string;
+  publishedArticlePath?: string;
   dryRun: boolean;
   reportPath: string;
   logPath: string;
@@ -720,6 +722,30 @@ function selectTopicForDailyRun(backlogAudit: AuditResult): { topic?: TopicRecor
 }
 
 function writeDailyReport(workspaceRoot: string, result: DailyRunnerResult): string {
+  const summaryLines = [
+    '## Summary',
+    ''
+  ];
+
+  if (result.articleId && result.topic) {
+    summaryLines.push(`- action: \`${result.publishedArticlePath ? 'published_article' : 'created_work_item'}\``);
+    summaryLines.push(`- topic: \`${result.topic}\``);
+    if (result.selectedReason) {
+      summaryLines.push(`- why: ${result.selectedReason}`);
+    }
+    if (result.publishedArticlePath) {
+      summaryLines.push(`- article_path: \`${path.relative(workspaceRoot, result.publishedArticlePath)}\``);
+    }
+  } else if (result.maintenanceTaskPath) {
+    summaryLines.push('- action: `created_maintenance_task`');
+    summaryLines.push('- why: publishable and ingest-ready queues were empty, so the runner switched to backlog maintenance.');
+    summaryLines.push(`- maintenance_path: \`${path.relative(workspaceRoot, result.maintenanceTaskPath)}\``);
+  } else {
+    summaryLines.push(`- action: \`${result.status}\``);
+    summaryLines.push('- why: no eligible next step was available in the current backlog state.');
+  }
+  summaryLines.push('');
+
   const lines = [
     '# Daily Runner Report',
     '',
@@ -729,7 +755,8 @@ function writeDailyReport(workspaceRoot: string, result: DailyRunnerResult): str
     `Backlog ready count: ${result.backlogAudit.readyCount}`,
     `Backlog replenish-now count: ${result.backlogAudit.replenishNowCount}`,
     `Needs evidence ingest: ${result.backlogAudit.needsIngestCount}`,
-    ''
+    '',
+    ...summaryLines
   ];
 
   if (result.articleId && result.topic && result.workItemPath) {
@@ -792,17 +819,18 @@ export async function runDailyRunner(currentDir: string, options?: DailyRunnerOp
           publish: options?.publish,
           push: options?.push
         });
-        runLog.addResult(`Stage runner status: ${stageResult.status}`);
-        const provisional: DailyRunnerResult = {
-          status: 'advanced_existing_work_item',
-          workspaceRoot,
-          articleId: stageResult.articleId,
-          workItemPath: stageResult.workItemPath,
-          dryRun: Boolean(options?.dryRun),
-          backlogAudit,
-          reportPath: '',
-          logPath: ''
-        };
+      runLog.addResult(`Stage runner status: ${stageResult.status}`);
+      const provisional: DailyRunnerResult = {
+        status: 'advanced_existing_work_item',
+        workspaceRoot,
+        articleId: stageResult.articleId,
+        workItemPath: stageResult.workItemPath,
+        publishedArticlePath: stageResult.blogFilePath,
+        dryRun: Boolean(options?.dryRun),
+        backlogAudit,
+        reportPath: '',
+        logPath: ''
+      };
         const reportPath = writeDailyReport(workspaceRoot, provisional);
         const logPath = runLog.complete(`Advanced existing work item ${stageResult.articleId} via stage runner.`);
         const result = { ...provisional, reportPath, logPath };
@@ -855,11 +883,11 @@ export async function runDailyRunner(currentDir: string, options?: DailyRunnerOp
         const retriedSelection = selectTopicForDailyRun(refreshedBacklogAudit);
         if (!retriedSelection.topic) {
           const provisional: DailyRunnerResult = {
-            status: 'created_maintenance_task',
-            workspaceRoot,
-            dryRun: Boolean(options?.dryRun),
-            backlogAudit: refreshedBacklogAudit,
-            maintenanceTaskPath,
+          status: 'created_maintenance_task',
+          workspaceRoot,
+          dryRun: Boolean(options?.dryRun),
+          backlogAudit: refreshedBacklogAudit,
+          maintenanceTaskPath,
             reportPath: '',
             logPath: ''
           };
@@ -899,6 +927,7 @@ export async function runDailyRunner(currentDir: string, options?: DailyRunnerOp
           workItemPath,
           topic: retriedTopic.topic,
           selectionMode: retriedSelectionMode,
+          selectedReason: retriedTopic.reason,
           dryRun: Boolean(options?.dryRun),
           backlogAudit: refreshedBacklogAudit,
           maintenanceTaskPath,
@@ -990,6 +1019,7 @@ export async function runDailyRunner(currentDir: string, options?: DailyRunnerOp
       workItemPath,
       topic: topic.topic,
       selectionMode,
+      selectedReason: topic.reason,
       dryRun: Boolean(options?.dryRun),
       backlogAudit,
       reportPath: '',
@@ -1014,6 +1044,7 @@ export async function runDailyRunner(currentDir: string, options?: DailyRunnerOp
         push: options?.push
       });
       runLog.addResult(`Stage runner status: ${stageResult.status}`);
+      provisional.publishedArticlePath = stageResult.blogFilePath;
     }
 
     const reportPath = writeDailyReport(workspaceRoot, provisional);

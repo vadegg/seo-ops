@@ -59,6 +59,7 @@ interface StageRunnerResult {
   reportPath: string;
   logPath: string;
   workItemPath: string;
+  blogFilePath?: string;
 }
 
 interface StatusFile {
@@ -595,6 +596,35 @@ function normalizeMetaDescription(value: string): string {
   return value.trim().replace(/\s+/g, ' ');
 }
 
+function fitMetaDescriptionLength(description: string): string {
+  if (description.length >= META_DESCRIPTION_MIN_LENGTH && description.length <= META_DESCRIPTION_MAX_LENGTH) {
+    return description;
+  }
+
+  if (description.length < META_DESCRIPTION_MIN_LENGTH) {
+    const suffix = ' Read the full breakdown.';
+    const fallback = normalizeMetaDescription(`${description}${suffix}`);
+    if (fallback.length <= META_DESCRIPTION_MAX_LENGTH) {
+      return fallback;
+    }
+
+    return fallback.slice(0, META_DESCRIPTION_MAX_LENGTH).trim();
+  }
+
+  const truncated = description.slice(0, META_DESCRIPTION_MAX_LENGTH);
+  const lastSentenceBoundary = Math.max(truncated.lastIndexOf('. '), truncated.lastIndexOf('; '));
+  if (lastSentenceBoundary >= META_DESCRIPTION_MIN_LENGTH - 1) {
+    return truncated.slice(0, lastSentenceBoundary + 1).trim();
+  }
+
+  const lastWordBoundary = truncated.lastIndexOf(' ');
+  if (lastWordBoundary >= META_DESCRIPTION_MIN_LENGTH - 1) {
+    return `${truncated.slice(0, lastWordBoundary).trim()}...`;
+  }
+
+  return truncated.trim();
+}
+
 function validateMetaDescription(value: unknown): string {
   const description = normalizeMetaDescription(String(value ?? ''));
 
@@ -602,16 +632,17 @@ function validateMetaDescription(value: unknown): string {
     throw new Error('Publisher stage did not produce a meta description.');
   }
 
+  const fittedDescription = fitMetaDescriptionLength(description);
   if (
-    description.length < META_DESCRIPTION_MIN_LENGTH ||
-    description.length > META_DESCRIPTION_MAX_LENGTH
+    fittedDescription.length < META_DESCRIPTION_MIN_LENGTH ||
+    fittedDescription.length > META_DESCRIPTION_MAX_LENGTH
   ) {
     throw new Error(
-      `Meta description must be ${META_DESCRIPTION_MIN_LENGTH}-${META_DESCRIPTION_MAX_LENGTH} characters. Received ${description.length}.`
+      `Meta description must be ${META_DESCRIPTION_MIN_LENGTH}-${META_DESCRIPTION_MAX_LENGTH} characters. Received ${fittedDescription.length}.`
     );
   }
 
-  return description;
+  return fittedDescription;
 }
 
 async function runPublisherStage(context: StageContext): Promise<{ slug: string; blogFilePath?: string }> {
@@ -846,9 +877,21 @@ function archivePublishedWorkItem(context: StageContext, blogFilePath?: string):
 
 function writeStageRunnerReport(
   context: StageContext,
-  result: Pick<StageRunnerResult, 'status' | 'articleId' | 'finalStage' | 'reason'>
+  result: Pick<StageRunnerResult, 'status' | 'articleId' | 'finalStage' | 'reason' | 'blogFilePath'>
 ): string {
   const reportPath = path.join(context.workspaceRoot, 'reports/status/stage-runner-latest.md');
+  const summaryLines = [
+    '## Summary',
+    '',
+    `- action: \`${result.blogFilePath ? 'published_article' : result.status}\``,
+    `- article_id: \`${result.articleId}\``,
+    `- why: ${result.reason}`
+  ];
+  if (result.blogFilePath) {
+    summaryLines.push(`- article_path: \`${path.relative(context.workspaceRoot, result.blogFilePath)}\``);
+  }
+  summaryLines.push('');
+
   const lines = [
     '# Stage Runner Report',
     '',
@@ -859,7 +902,9 @@ function writeStageRunnerReport(
     `Reason: ${result.reason}`,
     `Dry run: ${context.dryRun ? 'true' : 'false'}`,
     `Publish requested: ${context.publish ? 'true' : 'false'}`,
-    `Push requested: ${context.push ? 'true' : 'false'}`
+    `Push requested: ${context.push ? 'true' : 'false'}`,
+    '',
+    ...summaryLines
   ];
 
   writeText(reportPath, `${lines.join('\n')}\n`);
@@ -897,7 +942,8 @@ export async function runStageRunner(currentDir: string, options?: StageRunnerOp
         articleId: context.articleId,
         finalStage: context.status.current_stage,
         reason: (context.status.blocking_issues ?? []).join(' ') || 'Human review is required before continuing.',
-        logPath: ''
+        logPath: '',
+        blogFilePath: undefined
       };
       const reportPath = writeStageRunnerReport(context, provisional);
       const logPath = runLog.complete(provisional.reason);
@@ -946,7 +992,8 @@ export async function runStageRunner(currentDir: string, options?: StageRunnerOp
         articleId: context.articleId,
         finalStage: context.status.current_stage,
         reason: (context.status.blocking_issues ?? []).join(' ') || 'Human review is required before publish.',
-        logPath: ''
+        logPath: '',
+        blogFilePath: undefined
       };
       const reportPath = writeStageRunnerReport(context, provisional);
       const logPath = runLog.complete(provisional.reason);
@@ -972,7 +1019,8 @@ export async function runStageRunner(currentDir: string, options?: StageRunnerOp
       reason: blogFilePath
         ? 'Article advanced through publish and cleanup.'
         : 'Article advanced through stage generation but was not written to the blog.',
-      logPath: ''
+      logPath: '',
+      blogFilePath
     };
     const reportPath = writeStageRunnerReport(context, completed);
     const logPath = runLog.complete(completed.reason);
