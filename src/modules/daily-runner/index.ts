@@ -55,6 +55,7 @@ interface DailyRunnerResult {
   articleId?: string;
   workItemPath?: string;
   topic?: string;
+  selectionMode?: 'publishable' | 'needs_evidence_ingest';
   dryRun: boolean;
   reportPath: string;
   logPath: string;
@@ -386,6 +387,32 @@ function updateQueueForWorkItem(workspaceRoot: string, topic: TopicRecord, artic
   return queue;
 }
 
+function sortTopicsForPickup(topics: TopicRecord[]): TopicRecord[] {
+  return [...topics].sort((left, right) => {
+    const leftOrder = left.launchOrder ?? Number.MAX_SAFE_INTEGER;
+    const rightOrder = right.launchOrder ?? Number.MAX_SAFE_INTEGER;
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+
+    return left.topic.localeCompare(right.topic);
+  });
+}
+
+function selectTopicForDailyRun(backlogAudit: AuditResult): { topic?: TopicRecord; selectionMode?: 'publishable' | 'needs_evidence_ingest' } {
+  const publishable = sortTopicsForPickup(backlogAudit.nextPublishable)[0];
+  if (publishable) {
+    return { topic: publishable, selectionMode: 'publishable' };
+  }
+
+  const replenishFallback = sortTopicsForPickup(backlogAudit.needsEvidenceIngest)[0];
+  if (replenishFallback) {
+    return { topic: replenishFallback, selectionMode: 'needs_evidence_ingest' };
+  }
+
+  return {};
+}
+
 function writeDailyReport(workspaceRoot: string, result: DailyRunnerResult): string {
   const lines = [
     '# Daily Runner Report',
@@ -404,6 +431,10 @@ function writeDailyReport(workspaceRoot: string, result: DailyRunnerResult): str
     lines.push(`- article_id: \`${result.articleId}\``);
     lines.push(`- topic: \`${result.topic}\``);
     lines.push(`- work_item_path: \`${result.workItemPath}\``);
+    if (result.selectionMode === 'needs_evidence_ingest') {
+      lines.push('- selection_mode: `needs_evidence_ingest`');
+      lines.push('- note: publishable queue was empty, so daily runner pulled the next source-pack-backed backlog candidate.');
+    }
     if (result.dryRun) {
       lines.push('- note: dry-run only, files and queue were not written.');
     }
@@ -486,9 +517,9 @@ export async function runDailyRunner(currentDir: string, options?: DailyRunnerOp
       return result;
     }
 
-    const topic = backlogAudit.nextPublishable[0];
+    const { topic, selectionMode } = selectTopicForDailyRun(backlogAudit);
     if (!topic) {
-      runLog.addBlocker('No publishable topics are available in the backlog.');
+      runLog.addBlocker('No publishable topics or source-pack-backed replenishment candidates are available in the backlog.');
       const provisional: DailyRunnerResult = {
         status: 'no_action_no_topics',
         workspaceRoot,
@@ -504,6 +535,12 @@ export async function runDailyRunner(currentDir: string, options?: DailyRunnerOp
       return result;
     }
 
+    if (selectionMode === 'needs_evidence_ingest') {
+      runLog.addStep(
+        'Replenish backlog upstream',
+        'Publishable queue is empty, so daily runner is promoting the next source-pack-backed candidate before evidence-bank ingest is complete.'
+      );
+    }
     runLog.addStep('Select topic', `Selected \`${topic.primaryKeyword}\` from ${topic.program} / ${topic.cycleName}.`);
     const { articleId, workItemPath } = createWorkItem(
       workspaceRoot,
@@ -538,6 +575,7 @@ export async function runDailyRunner(currentDir: string, options?: DailyRunnerOp
       articleId,
       workItemPath,
       topic: topic.topic,
+      selectionMode,
       dryRun: Boolean(options?.dryRun),
       backlogAudit,
       reportPath: '',
