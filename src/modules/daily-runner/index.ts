@@ -3,7 +3,7 @@ import path from 'node:path';
 import yaml from 'js-yaml';
 import { ensureDir, readYamlFile, writeJson, writeText } from '../../lib/files.js';
 import { createRunLogger } from '../../lib/run-log.js';
-import { loadRunnerConfig } from '../../lib/workspace-config.js';
+import { getBacklogFiles, loadRunnerConfig, resolveWorkspacePath } from '../../lib/workspace-config.js';
 import { resolveWorkspaceRoot, runBacklogAudit, type AuditResult, type TopicRecord } from '../backlog-audit/index.js';
 import { runStageRunner } from '../stage-runner/index.js';
 
@@ -50,12 +50,19 @@ interface DailyRunnerOptions {
 }
 
 interface DailyRunnerResult {
-  status: 'created_work_item' | 'no_action_active_exists' | 'no_action_no_topics' | 'advanced_existing_work_item' | 'advanced_new_work_item';
+  status:
+    | 'created_work_item'
+    | 'created_maintenance_task'
+    | 'no_action_active_exists'
+    | 'no_action_no_topics'
+    | 'advanced_existing_work_item'
+    | 'advanced_new_work_item';
   workspaceRoot: string;
   articleId?: string;
   workItemPath?: string;
   topic?: string;
   selectionMode?: 'publishable' | 'needs_evidence_ingest';
+  maintenanceTaskPath?: string;
   dryRun: boolean;
   reportPath: string;
   logPath: string;
@@ -68,6 +75,13 @@ interface StrategyEvidenceEntry {
   one_liner?: string;
   where?: string;
   strength?: string;
+}
+
+interface MaintenanceCandidate {
+  program: string;
+  sourcePath: string;
+  backlogFile: string;
+  reason: string;
 }
 
 function slugify(value: string): string {
@@ -90,6 +104,14 @@ function writeYamlFile(filePath: string, data: unknown): void {
 
 function fileExists(filePath: string): boolean {
   return fs.existsSync(filePath);
+}
+
+function normalizeKey(value: string | undefined): string {
+  return (value ?? '')
+    .toLowerCase()
+    .replace(/\.md$/i, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
 function loadWorkflowConfig(workspaceRoot: string): WorkflowConfig {
@@ -387,6 +409,107 @@ function updateQueueForWorkItem(workspaceRoot: string, topic: TopicRecord, artic
   return queue;
 }
 
+function collectIndexedSourcePaths(workspaceRoot: string): Set<string> {
+  const runnerConfig = loadRunnerConfig(workspaceRoot);
+  const evidenceIndexPath = resolveWorkspacePath(
+    workspaceRoot,
+    runnerConfig.evidence_index_file,
+    'evidence-bank/evidence-index.yaml'
+  );
+  const indexed = new Set<string>();
+
+  if (!fileExists(evidenceIndexPath)) {
+    return indexed;
+  }
+
+  const evidenceIndex = readYamlFile<Record<string, any>>(evidenceIndexPath);
+  for (const item of evidenceIndex.items ?? []) {
+    if (typeof item?.source_path === 'string' && item.source_path.length > 0) {
+      indexed.add(normalizeKey(item.source_path));
+    }
+  }
+
+  return indexed;
+}
+
+function isPotentialEvidenceSource(sourcePath: string): boolean {
+  return (
+    sourcePath.startsWith('research/raw/') ||
+    sourcePath.startsWith('evidence-bank/inbox/') ||
+    sourcePath.startsWith('Archive/Research')
+  );
+}
+
+function collectMaintenanceCandidatesForNeedsIngest(workspaceRoot: string): MaintenanceCandidate[] {
+  const runnerConfig = loadRunnerConfig(workspaceRoot);
+  const indexedSourcePaths = collectIndexedSourcePaths(workspaceRoot);
+  const seen = new Set<string>();
+  const candidates: MaintenanceCandidate[] = [];
+
+  for (const backlogFile of getBacklogFiles(workspaceRoot, runnerConfig)) {
+    const doc = readYamlFile<Record<string, any>>(backlogFile);
+    for (const sourcePath of doc.source_documents ?? []) {
+      if (typeof sourcePath !== 'string' || !isPotentialEvidenceSource(sourcePath)) {
+        continue;
+      }
+
+      const absolutePath = path.join(workspaceRoot, sourcePath);
+      if (!fileExists(absolutePath)) {
+        continue;
+      }
+
+      const normalizedPath = normalizeKey(sourcePath);
+      if (!normalizedPath || indexedSourcePaths.has(normalizedPath) || seen.has(normalizedPath)) {
+        continue;
+      }
+
+      seen.add(normalizedPath);
+      candidates.push({
+        program: String(doc.program ?? path.basename(backlogFile, path.extname(backlogFile))),
+        sourcePath,
+        backlogFile: path.relative(workspaceRoot, backlogFile),
+        reason: 'Raw source document exists but is not represented in evidence-bank/evidence-index.yaml.'
+      });
+    }
+  }
+
+  return candidates.sort((left, right) => left.sourcePath.localeCompare(right.sourcePath));
+}
+
+function writeMaintenanceTaskReport(workspaceRoot: string, candidates: MaintenanceCandidate[], dryRun: boolean): string {
+  const reportsDir = path.join(workspaceRoot, 'reports/maintenance');
+  ensureDir(reportsDir);
+
+  const lines = [
+    '# Needs-Ingest Replenishment Task',
+    '',
+    `Generated at: ${new Date().toISOString()}`,
+    `Dry run: ${dryRun ? 'true' : 'false'}`,
+    `Candidate source documents: ${candidates.length}`,
+    '',
+    '## Task',
+    '',
+    'Ingest the source documents below into `evidence-bank/evidence-index.yaml` so they can repopulate `needs_evidence_ingest` candidates.',
+    ''
+  ];
+
+  for (const candidate of candidates) {
+    lines.push(`- source_path: \`${candidate.sourcePath}\``);
+    lines.push(`  program: ${candidate.program}`);
+    lines.push(`  backlog_file: ${candidate.backlogFile}`);
+    lines.push(`  reason: ${candidate.reason}`);
+  }
+
+  const latestPath = path.join(reportsDir, 'needs-ingest-replenishment-latest.md');
+  writeText(latestPath, `${lines.join('\n')}\n`);
+  writeJson(path.join(reportsDir, 'needs-ingest-replenishment-latest.json'), {
+    generatedAt: new Date().toISOString(),
+    dryRun,
+    candidates
+  });
+  return latestPath;
+}
+
 function sortTopicsForPickup(topics: TopicRecord[]): TopicRecord[] {
   return [...topics].sort((left, right) => {
     const leftOrder = left.launchOrder ?? Number.MAX_SAFE_INTEGER;
@@ -442,6 +565,9 @@ function writeDailyReport(workspaceRoot: string, result: DailyRunnerResult): str
   } else {
     lines.push('## Outcome', '');
     lines.push('- No new work item was created.');
+    if (result.maintenanceTaskPath) {
+      lines.push(`- Maintenance task created: \`${path.relative(workspaceRoot, result.maintenanceTaskPath)}\``);
+    }
     lines.push('');
   }
 
@@ -519,7 +645,35 @@ export async function runDailyRunner(currentDir: string, options?: DailyRunnerOp
 
     const { topic, selectionMode } = selectTopicForDailyRun(backlogAudit);
     if (!topic) {
-      runLog.addBlocker('No publishable topics or source-pack-backed replenishment candidates are available in the backlog.');
+      const maintenanceCandidates = collectMaintenanceCandidatesForNeedsIngest(workspaceRoot);
+      if (maintenanceCandidates.length > 0) {
+        runLog.addStep(
+          'Replenish needs_evidence_ingest',
+          'Publishable and ingest-ready queues are empty, so daily runner is creating a maintenance task from unindexed raw source documents.'
+        );
+        const maintenanceTaskPath = writeMaintenanceTaskReport(
+          workspaceRoot,
+          maintenanceCandidates,
+          Boolean(options?.dryRun)
+        );
+        runLog.addResult(`Maintenance candidates: ${maintenanceCandidates.length}`);
+        const provisional: DailyRunnerResult = {
+          status: 'created_maintenance_task',
+          workspaceRoot,
+          dryRun: Boolean(options?.dryRun),
+          backlogAudit,
+          maintenanceTaskPath,
+          reportPath: '',
+          logPath: ''
+        };
+        const reportPath = writeDailyReport(workspaceRoot, provisional);
+        const logPath = runLog.complete('Created maintenance task to replenish needs_evidence_ingest.');
+        const result = { ...provisional, reportPath, logPath };
+        writeJson(path.join(workspaceRoot, 'reports/status/daily-runner-latest.json'), result);
+        return result;
+      }
+
+      runLog.addBlocker('No publishable topics, source-pack-backed replenishment candidates, or unindexed source documents are available in the backlog.');
       const provisional: DailyRunnerResult = {
         status: 'no_action_no_topics',
         workspaceRoot,
