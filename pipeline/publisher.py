@@ -17,18 +17,13 @@ from clients import indexnow
 from clients.retry import with_backoff
 
 
-def _update_topic_history(path: Path, entry: dict) -> None:
+def _append_json_list(path: Path, key: str, entry: dict) -> dict:
+    """Append ``entry`` to the list under ``key``, persist, return the data."""
     data = json.loads(path.read_text(encoding="utf-8"))
-    data.setdefault("published", []).append(entry)
+    data.setdefault(key, []).append(entry)
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False),
                     encoding="utf-8")
-
-
-def _append_internal_link(path: Path, entry: dict) -> None:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    data.setdefault("posts", []).append(entry)
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False),
-                    encoding="utf-8")
+    return data
 
 
 def _norm_score(v) -> float:
@@ -130,16 +125,16 @@ def publish(*, cfg, assembled, brief: dict, topic: dict, stage: int,
         return status
 
     # Real publish — mutate persistent stores.
-    _update_topic_history(
-        cfg.backlog_dir / "topic_history.json",
+    th = _append_json_list(
+        cfg.backlog_dir / "topic_history.json", "published",
         {"topic": topic.get("topic"),
          "keyword": brief.get("primary_keyword"),
          "slug": slug, "url": url, "date": run_date,
          "escalation_stage": stage},
     )
     cluster = topic.get("cluster") or ""
-    _append_internal_link(
-        cfg.themes_dir / "internal_links.json",
+    _append_json_list(
+        cfg.themes_dir / "internal_links.json", "posts",
         {"cluster": cluster, "url": url, "slug": slug,
          "title": brief.get("title"), "date": run_date},
     )
@@ -148,8 +143,6 @@ def publish(*, cfg, assembled, brief: dict, topic: dict, stage: int,
     except OSError as e:
         logger.warning("content_map update skipped: %s", e)
 
-    th = json.loads((cfg.backlog_dir / "topic_history.json")
-                    .read_text(encoding="utf-8"))
     published_set = {(p.get("keyword") or "").strip().lower()
                      for p in th.get("published", []) if p.get("keyword")}
     stats = _reconcile_keyword_backlog(

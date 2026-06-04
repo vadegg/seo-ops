@@ -67,22 +67,21 @@ def _load_store(path: Path, default):
         return default
 
 
+def _load_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8") if path.is_file() else ""
+
+
 def _load_stores(cfg) -> dict:
     return {
         "backlog": _load_store(cfg.backlog_dir / "keyword_backlog.json",
                                {"candidates": []}),
         "topic_history": _load_store(
             cfg.backlog_dir / "topic_history.json", {"published": []}),
-        "seed_topics": (cfg.backlog_dir / "seed_topics.md").read_text(
-            encoding="utf-8") if (cfg.backlog_dir / "seed_topics.md"
-                                  ).is_file() else "",
-        "content_map": (cfg.themes_dir / "content_map.md").read_text(
-            encoding="utf-8") if (cfg.themes_dir / "content_map.md"
-                                  ).is_file() else "",
+        "seed_topics": _load_text(cfg.backlog_dir / "seed_topics.md"),
+        "content_map": _load_text(cfg.themes_dir / "content_map.md"),
         "internal_links": _load_store(
             cfg.themes_dir / "internal_links.json", {"posts": []}),
-        "style_guide": cfg.style_guide_path.read_text(encoding="utf-8")
-        if cfg.style_guide_path.is_file() else "",
+        "style_guide": _load_text(cfg.style_guide_path),
     }
 
 
