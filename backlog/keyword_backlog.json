@@ -1,0 +1,62 @@
+{
+  "schema": "keyword_backlog/v1",
+  "updated": "2026-06-04",
+  "note": "Scored unused candidates (score 0..1 + date). Researcher reads here first (cheap reserve before paid APIs). After each publish the Publisher folds in the day's non-selected candidates + surplus, then prunes: drops already-published and below-floor entries, keeps the top-N by score.",
+  "candidates": [
+    {
+      "keyword": "ux research methods comparison",
+      "score": 0.65,
+      "date": "2026-05-30"
+    },
+    {
+      "keyword": "usability testing vs user interviews",
+      "score": 0.6,
+      "date": "2026-06-03"
+    },
+    {
+      "keyword": "thematic analysis qualitative research",
+      "score": 0.58,
+      "date": "2026-06-03"
+    },
+    {
+      "keyword": "remote usability testing best practices",
+      "score": 0.56,
+      "date": "2026-06-03"
+    },
+    {
+      "keyword": "when to use qualitative vs quantitative research",
+      "score": 0.54,
+      "date": "2026-06-03"
+    },
+    {
+      "keyword": "user research plan template",
+      "score": 0.5,
+      "date": "2026-06-03"
+    },
+    {
+      "keyword": "how to analyze user interview data",
+      "score": 0.49,
+      "date": "2026-06-03"
+    },
+    {
+      "keyword": "jobs to be done framework ux",
+      "score": 0.48,
+      "date": "2026-06-03"
+    },
+    {
+      "keyword": "market research vs ux research differences",
+      "score": 0.47,
+      "date": "2026-06-03"
+    },
+    {
+      "keyword": "unmoderated usability testing tools",
+      "score": 0.45,
+      "date": "2026-06-03"
+    },
+    {
+      "keyword": "how to write a research brief for ux projects",
+      "score": 0.42,
+      "date": "2026-06-04"
+    }
+  ]
+}

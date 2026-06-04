@@ -1,0 +1,230 @@
+{
+  "schema": "topic_history/v1",
+  "note": "Published topics — dedupe guard. Publisher appends after each successful push.",
+  "published": [
+    {
+      "escalation_stage": 1,
+      "topic": "Synthetic Respondents in UX Research: What Works and What Doesn't",
+      "keyword": "synthetic respondents",
+      "slug": "synthetic-respondents-ai-research",
+      "url": "https://blog.glasgow.works/blog/synthetic-respondents-ai-research/",
+      "date": "2026-03-19"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "Why You Shouldn't Delegate Customer Interviews to Non-Researchers",
+      "keyword": "customer interviews",
+      "slug": "why-you-shouldnt-delegate-customer-interviews",
+      "url": "https://blog.glasgow.works/blog/why-you-shouldnt-delegate-customer-interviews/",
+      "date": "2026-03-19"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "Customer Research: What It Is Actually For in Product Decisions",
+      "keyword": "customer research",
+      "slug": "customer-research",
+      "url": "https://blog.glasgow.works/blog/customer-research/",
+      "date": "2026-03-25"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "Customer Research Methods: Choose the Method That Matches the Decision",
+      "keyword": "customer research",
+      "slug": "customer-research-methods",
+      "url": "https://blog.glasgow.works/blog/customer-research-methods/",
+      "date": "2026-03-25"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "How to Do Customer Research Without Mistaking Politeness for Signal",
+      "keyword": "customer research",
+      "slug": "how-to-do-customer-research",
+      "url": "https://blog.glasgow.works/blog/how-to-do-customer-research/",
+      "date": "2026-03-25"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "B2B Market Research: What Changes When the Buyer Is Not an Individual",
+      "keyword": "b2b market research",
+      "slug": "b2b-market-research",
+      "url": "https://blog.glasgow.works/blog/b2b-market-research/",
+      "date": "2026-03-26"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "Product Research for Teams Making Expensive Decisions",
+      "keyword": "product research",
+      "slug": "product-research",
+      "url": "https://blog.glasgow.works/blog/product-research/",
+      "date": "2026-03-26"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "Qualitative Market Research: When Interviews Beat Bigger Sample Sizes",
+      "keyword": "qualitative market research",
+      "slug": "qualitative-market-research",
+      "url": "https://blog.glasgow.works/blog/qualitative-market-research/",
+      "date": "2026-03-26"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "AI Competitive Analysis Tools for Product and GTM Teams",
+      "keyword": "competitive analysis",
+      "slug": "ai-competitive-analysis-tools",
+      "url": "https://blog.glasgow.works/blog/ai-competitive-analysis-tools/",
+      "date": "2026-03-27"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "AI Tools for Product Research in 2026: The Complete Guide",
+      "keyword": "ai product research",
+      "slug": "ai-tools-for-product-research",
+      "url": "https://blog.glasgow.works/blog/ai-tools-for-product-research/",
+      "date": "2026-03-27"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "AI Tools for Qualitative Research: Interviews, Recruiting, and Synthesis",
+      "keyword": "ai qualitative research",
+      "slug": "ai-tools-for-qualitative-research",
+      "url": "https://blog.glasgow.works/blog/ai-tools-for-qualitative-research/",
+      "date": "2026-03-27"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "How Much Do Startups Spend on AI Tools? The Hidden AI Stack in 2026",
+      "keyword": "ai startup spending",
+      "slug": "how-much-do-startups-spend-on-ai-tools",
+      "url": "https://blog.glasgow.works/blog/how-much-do-startups-spend-on-ai-tools/",
+      "date": "2026-03-28"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "Competitor Analysis Without Copying the Wrong Competitors: A How-To Guide",
+      "keyword": "competitor analysis",
+      "slug": "competitor-analysis-without-copying-the-wrong-competitors",
+      "url": "https://blog.glasgow.works/blog/competitor-analysis-without-copying-the-wrong-competitors/",
+      "date": "2026-05-04"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "How to Conduct Market Research Without Producing Generic Noise",
+      "keyword": "how to conduct market research",
+      "slug": "how-to-conduct-market-research-without-producing-generic-noise",
+      "url": "https://blog.glasgow.works/blog/how-to-conduct-market-research-without-producing-generic-noise/",
+      "date": "2026-05-04"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "Market Research Methods: Which Method Fits Which Decision",
+      "keyword": "",
+      "slug": "market-research-methods-which-method-fits-which-decision",
+      "url": "https://blog.glasgow.works/blog/market-research-methods-which-method-fits-which-decision/",
+      "date": "2026-05-04"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "Types of Market Research and When Each One Actually Helps",
+      "keyword": "types of market research",
+      "slug": "types-of-market-research-and-when-each-one-actually-helps",
+      "url": "https://blog.glasgow.works/blog/types-of-market-research-and-when-each-one-actually-helps/",
+      "date": "2026-05-04"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "Market Segmentation: What It Helps You Decide and What It Does Not",
+      "keyword": "market segmentation",
+      "slug": "market-segmentation-what-it-helps-you-decide-and-what-it-does-not",
+      "url": "https://blog.glasgow.works/blog/market-segmentation-what-it-helps-you-decide-and-what-it-does-not/",
+      "date": "2026-05-05"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "How to Conduct Target Audience Research Before Positioning Work",
+      "keyword": "target audience",
+      "slug": "target-audience-research-before-positioning",
+      "url": "https://blog.glasgow.works/blog/target-audience-research-before-positioning/",
+      "date": "2026-05-09"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "AI Tool Budget for Startups: Benchmarks by Stage",
+      "keyword": "ai tool budget for startups",
+      "slug": "ai-tool-budget-for-startups-benchmarks-by-stage",
+      "url": "https://blog.glasgow.works/blog/ai-tool-budget-for-startups-benchmarks-by-stage/",
+      "date": "2026-05-11"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "AI Tools for Desk Research: Deep Research Agents, Notebooks, and Trend Detection",
+      "keyword": "ai tools for desk research",
+      "slug": "ai-tools-for-desk-research-deep-research-agents-notebooks-trend-detection",
+      "url": "https://blog.glasgow.works/blog/ai-tools-for-desk-research-deep-research-agents-notebooks-trend-detection/",
+      "date": "2026-05-11"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "AI Tools for Expert Interviews: A Practical Guide for B2B Teams",
+      "keyword": "ai tools for expert interviews",
+      "slug": "ai-tools-for-expert-interviews",
+      "url": "https://blog.glasgow.works/blog/ai-tools-for-expert-interviews/",
+      "date": "2026-05-12"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "AI Tools for Quantitative Research: Surveys, Open-End Analysis, and Quant Platforms",
+      "keyword": "ai tools for quantitative research",
+      "slug": "ai-tools-for-quantitative-research-surveys-open-end-analysis-and-quant-platforms",
+      "url": "https://blog.glasgow.works/blog/ai-tools-for-quantitative-research-surveys-open-end-analysis-and-quant-platforms/",
+      "date": "2026-05-13"
+    },
+    {
+      "escalation_stage": 1,
+      "topic": "Vibe Coding Costs in 2026: What Solo Founders Actually Pay",
+      "keyword": "vibe coding costs",
+      "slug": "vibe-coding-costs-2026-solo-founders",
+      "url": "https://blog.glasgow.works/blog/vibe-coding-costs-2026-solo-founders/",
+      "date": "2026-05-14"
+    },
+    {
+      "topic": "How to Conduct User Interviews: A Practical Guide",
+      "keyword": "how to conduct user interviews",
+      "slug": "how-to-conduct-user-interviews",
+      "url": "https://blog.glasgow.works/blog/how-to-conduct-user-interviews/",
+      "date": "2026-05-21",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Guerrilla Usability Testing: A Practical Guide",
+      "keyword": "guerrilla usability testing guide",
+      "slug": "guerrilla-usability-testing-guide",
+      "url": "https://blog.glasgow.works/blog/guerrilla-usability-testing-guide/",
+      "date": "2026-05-30",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Affinity Mapping in Qualitative Research: Step-by-Step",
+      "keyword": "affinity mapping in qualitative research",
+      "slug": "affinity-mapping-in-qualitative-research",
+      "url": "https://blog.glasgow.works/blog/affinity-mapping-in-qualitative-research/",
+      "date": "2026-06-02",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "How to Recruit Participants for User Research",
+      "keyword": "how to recruit participants for user research",
+      "slug": "how-to-recruit-participants-for-user-research",
+      "url": "https://blog.glasgow.works/blog/how-to-recruit-participants-for-user-research/",
+      "date": "2026-06-03",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Card Sorting in UX Research: How to Run It and What It Tells You",
+      "keyword": "card sorting ux research",
+      "slug": "card-sorting-ux-research",
+      "url": "https://blog.glasgow.works/blog/card-sorting-ux-research",
+      "date": "2026-06-04",
+      "escalation_stage": 1
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+[Unit]
+Description=SEO Autoblog — autonomous daily SEO post
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=seo-autoblog
+WorkingDirectory=/opt/seo-autoblog
+EnvironmentFile=/opt/seo-autoblog/.env
+ExecStart=/opt/seo-autoblog/.venv/bin/python /opt/seo-autoblog/run.py
+# Idempotency in the orchestrator makes a manual restart safe.
+TimeoutStartSec=1800
+Nice=10
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/seo-autoblog
+
+[Install]
+WantedBy=multi-user.target

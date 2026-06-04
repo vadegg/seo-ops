@@ -1,0 +1,47 @@
+{
+  "schema": "internal_links/v1",
+  "note": "cluster/topic -> canonical URL. Outliner reads to plan links; Assembler inserts them; Publisher appends the new post's URL.",
+  "hubs": {
+    "ux-research-methods": "/blog/ux-research-methods",
+    "research-operations": "/blog/research-operations",
+    "insight-to-impact": "/blog/insight-to-impact",
+    "product-discovery": "/blog/product-discovery"
+  },
+  "posts": [
+    {
+      "cluster": "user interviews & discussion guides",
+      "url": "https://blog.glasgow.works/how-to-conduct-user-interviews",
+      "slug": "how-to-conduct-user-interviews",
+      "title": "How to Conduct User Interviews: A Practical Guide",
+      "date": "2026-05-21"
+    },
+    {
+      "cluster": "usability testing (moderated vs unmoderated)",
+      "url": "https://blog.glasgow.works/guerrilla-usability-testing-guide",
+      "slug": "guerrilla-usability-testing-guide",
+      "title": "Guerrilla Usability Testing: A Practical Guide",
+      "date": "2026-05-30"
+    },
+    {
+      "cluster": "synthesis & analysis workflows",
+      "url": "https://blog.glasgow.works/blog/affinity-mapping-in-qualitative-research",
+      "slug": "affinity-mapping-in-qualitative-research",
+      "title": "Affinity Mapping in Qualitative Research: Step-by-Step",
+      "date": "2026-06-02"
+    },
+    {
+      "cluster": "participant recruitment & panels",
+      "url": "https://blog.glasgow.works/blog/how-to-recruit-participants-for-user-research",
+      "slug": "how-to-recruit-participants-for-user-research",
+      "title": "How to Recruit Participants for User Research",
+      "date": "2026-06-03"
+    },
+    {
+      "cluster": "card sorting & tree testing",
+      "url": "https://blog.glasgow.works/blog/card-sorting-ux-research",
+      "slug": "card-sorting-ux-research",
+      "title": "Card Sorting in UX Research: How to Run It",
+      "date": "2026-06-04"
+    }
+  ]
+}

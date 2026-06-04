@@ -1,0 +1,11 @@
+[Unit]
+Description=Run SEO Autoblog daily at 07:00 Europe/Lisbon
+
+[Timer]
+OnCalendar=*-*-* 07:00:00
+Persistent=true
+# Interpret OnCalendar in the blog's primary market timezone.
+# Set the host timezone to Europe/Lisbon, or adjust OnCalendar to UTC.
+
+[Install]
+WantedBy=timers.target

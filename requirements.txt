@@ -1,0 +1,11 @@
+# Core
+anthropic>=0.103.0
+anyio>=4.4.0
+
+# Clients
+requests>=2.32.0
+google-api-python-client>=2.140.0
+google-auth>=2.34.0
+
+# Tests
+pytest>=8.3.0

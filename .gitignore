@@ -1,0 +1,18 @@
+.env
+.env.*
+*.bak
+*.bak.*
+
+# Confidential, local-only — must never be committed (see CLAUDE.md)
+secrets/
+evidence/
+
+*.pyc
+__pycache__/
+.venv/
+venv/
+runs/*/
+!runs/.gitkeep
+.pytest_cache/
+*.egg-info/
+.DS_Store

@@ -1,0 +1,36 @@
+2026-06-02T21:11:01+0000 | orchestrator | INFO | === run start date=2026-06-02 dry_run=True ===
+2026-06-02T21:11:01+0000 | orchestrator | INFO | escalation stage 1 [sonnet] :: GSC near-top (pos 5–20) + DataForSEO expansion :: reason: run start
+2026-06-02T21:11:01+0000 | orchestrator | INFO | stage 1 (sonnet) :: GSC near-top (pos 5–20) + DataForSEO expansion
+2026-06-02T21:11:02+0000 | orchestrator | INFO | gsc near-top: 0 queries in band 5-20
+2026-06-02T21:11:03+0000 | orchestrator | INFO | agent researcher -> model=claude-sonnet-4-6 tools=[]
+2026-06-02T21:11:12+0000 | orchestrator | INFO | agent researcher produced 1580 chars
+2026-06-02T21:11:12+0000 | orchestrator | INFO | agent strategist -> model=claude-sonnet-4-6 tools=[]
+2026-06-02T21:11:24+0000 | orchestrator | INFO | agent strategist produced 1803 chars
+2026-06-02T21:11:24+0000 | orchestrator | INFO | strategist score=0.630 threshold=0.62
+2026-06-02T21:11:24+0000 | orchestrator | INFO | === step outliner (stage 1) ===
+2026-06-02T21:11:24+0000 | orchestrator | INFO | agent outliner -> model=claude-sonnet-4-6 tools=[]
+2026-06-02T21:12:02+0000 | orchestrator | INFO | agent outliner produced 7551 chars
+2026-06-02T21:12:02+0000 | orchestrator | INFO | === step writer (stage 1) ===
+2026-06-02T21:12:02+0000 | orchestrator | INFO | evidence: indexed 5273 passages from 22 files
+2026-06-02T21:12:02+0000 | orchestrator | INFO | agent writer -> model=claude-sonnet-4-6 tools=[]
+2026-06-02T21:13:11+0000 | orchestrator | INFO | agent writer produced 12316 chars
+2026-06-02T21:13:11+0000 | orchestrator | INFO | === step editor (stage 1) ===
+2026-06-02T21:13:11+0000 | orchestrator | INFO | agent editor -> model=claude-sonnet-4-6 tools=[]
+2026-06-02T21:14:33+0000 | orchestrator | INFO | agent editor produced 14492 chars
+2026-06-02T21:14:33+0000 | orchestrator | INFO | === step assembler (stage 1) ===
+2026-06-02T21:14:33+0000 | orchestrator | ERROR | pipeline failed: meta_description must be 150-160 chars after normalization; got 165
+Traceback (most recent call last):
+  File "/home/clawd/seo/seo-autoblog/pipeline/orchestrator.py", line 165, in run_pipeline
+    run_steps(ctx, ["outliner", "writer", "editor",
+  File "/home/clawd/seo/seo-autoblog/pipeline/steps.py", line 347, in run_steps
+    step.fn(ctx)
+  File "/home/clawd/seo/seo-autoblog/pipeline/steps.py", line 225, in step_assembler
+    assembled = assemble(
+                ^^^^^^^^^
+  File "/home/clawd/seo/seo-autoblog/pipeline/assembler.py", line 146, in assemble
+    raise AssemblyError(
+pipeline.assembler.AssemblyError: meta_description must be 150-160 chars after normalization; got 165
+2026-06-02T21:14:33+0000 | orchestrator | WARNING | telegram failed (attempt 1/3): 401 Client Error: Unauthorized for url: https://api.telegram.org/bot123456:ABC-DEF.../sendMessage
+2026-06-02T21:14:34+0000 | orchestrator | WARNING | telegram failed (attempt 2/3): 401 Client Error: Unauthorized for url: https://api.telegram.org/bot123456:ABC-DEF.../sendMessage
+2026-06-02T21:14:36+0000 | orchestrator | WARNING | telegram failed (attempt 3/3): 401 Client Error: Unauthorized for url: https://api.telegram.org/bot123456:ABC-DEF.../sendMessage
+2026-06-02T21:14:36+0000 | orchestrator | ERROR | telegram alert dropped: telegram failed after 3 attempts: 401 Client Error: Unauthorized for url: https://api.telegram.org/bot123456:ABC-DEF.../sendMessage | text=pipeline FAILED for 2026-06-02: meta_description must be 150-160 chars after normalization; got 165
