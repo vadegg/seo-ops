@@ -346,8 +346,11 @@ def assemble(*, edited_markdown: str, brief: dict, topic: dict,
                      image_url=image_url)
     markdown = "\n".join(fm) + body.strip() + "\n\n" + jsonld + "\n"
 
-    # Final guarantee: the verification marker is gone.
-    assert "CONFIDENTIAL" not in markdown.upper().replace("[REDACTED]", ""), \
+    # Final guarantee: no confidential token survived. Use the same
+    # whole-word patterns as the scrub — a bare substring check here
+    # false-positives on legitimate prose ("confidentiality", "NDA"
+    # inside "standard") that the scrub deliberately preserves.
+    assert not any(p.search(markdown) for p in _CONFIDENTIAL_PATTERNS), \
         "confidential token survived scrub"
 
     return AssembledPost(markdown=markdown, slug=slug, leaked=leaked,
