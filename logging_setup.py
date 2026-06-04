@@ -26,10 +26,46 @@ class _AgentFilter(logging.Filter):
         return True
 
 
-def setup_run_logging(run_dir: Path) -> logging.Logger:
+class RunLogAccumulator(logging.Handler):
+    """Collects every WARN/ERROR record of a run so the orchestrator can
+    print a single 'what went wrong' summary instead of making the reader
+    grep the whole INFO stream (#3). Also feeds the Telegram digest (#8).
+    """
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.WARNING)
+        self.records: list[dict] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if record.levelno < logging.WARNING:
+            return
+        self.records.append({
+            "level": record.levelname,
+            "agent": getattr(record, "agent", "orchestrator"),
+            "message": record.getMessage(),
+        })
+
+    @property
+    def degradations(self) -> list[dict]:
+        return list(self.records)
+
+    def summary_block(self) -> str:
+        """Multi-line block for run.log; a clean run says so explicitly."""
+        if not self.records:
+            return "=== degradations: none ==="
+        lines = [f"=== degradations ({len(self.records)}) ==="]
+        for r in self.records:
+            mark = "‼" if r["level"] == "ERROR" else "•"
+            lines.append(f"{mark} {r['level']} | {r['agent']} | {r['message']}")
+        return "\n".join(lines)
+
+
+def setup_run_logging(run_dir: Path) -> "RunLogAccumulator":
     """Configure the root 'seo-autoblog' logger for one run.
 
-    Writes to ``<run_dir>/run.log`` and stderr (captured by journald).
+    Writes to ``<run_dir>/run.log`` and stderr (captured by journald) and
+    attaches a :class:`RunLogAccumulator`, returned so the caller can
+    render the end-of-run degradation summary + digest.
     Idempotent: re-configuring the same run replaces handlers.
     """
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -51,7 +87,11 @@ def setup_run_logging(run_dir: Path) -> logging.Logger:
     stream_h.addFilter(flt)
     logger.addHandler(stream_h)
 
-    return logger
+    accumulator = RunLogAccumulator()
+    accumulator.addFilter(flt)
+    logger.addHandler(accumulator)
+
+    return accumulator
 
 
 def get_agent_logger(name: str) -> logging.LoggerAdapter:

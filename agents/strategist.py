@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import json
 
-from .runner import extract_json
+from .runner import run_json
+from .validation import validate_strategist
 
 SYSTEM_PROMPT = """\
 You are the Content Strategist for Glasgow Research's SEO blog. From the
@@ -48,10 +49,9 @@ def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
 
 Choose one topic and return the JSON object now."""
 
-    out = runner.run(name="strategist", system=SYSTEM_PROMPT, user=user,
-                      model=model, tools=tools, max_tokens=max_tokens,
-                      logger=logger)
-    data = extract_json(out)
+    data = run_json(runner, name="strategist", system=SYSTEM_PROMPT, user=user,
+                    model=model, tools=tools, max_tokens=max_tokens,
+                    logger=logger, validate=validate_strategist)
     try:
         data["score"] = float(data.get("score", 0.0))
     except (TypeError, ValueError):

@@ -40,3 +40,10 @@ UX / market-research agency. Prune + replenish quarterly.
 - Jobs-to-be-Done interviews: question patterns that work
 - Assumption mapping before you build the prototype
 - Opportunity solution trees for a single product bet
+
+## Product research (B2B SaaS)
+- Jobs-to-be-Done interviews for B2B SaaS: the complete guide
+- Win-loss analysis for B2B SaaS: turning lost deals into a research signal
+- How to recruit B2B interview participants without a panel
+- Pricing research for B2B SaaS: methods beyond the Van Westendorp survey
+- Churn research for SaaS: interviewing the customers who left

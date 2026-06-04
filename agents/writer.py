@@ -25,16 +25,30 @@ Hard rules:
 
 def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
         brief: dict, style_guide: str, evidence_passages: list) -> str:
+    has_evidence = bool(evidence_passages)
     ev = "\n\n".join(
         f"[evidence:{e.get('file','?')}] {e.get('text','')}"
         for e in evidence_passages[:8]
     ) or "(no evidence retrieved — write from domain expertise, do not fabricate data)"
+
+    # #14: require a first-hand, anonymised case ONLY when the corpus actually
+    # supplied passages. With no evidence, never invent one.
+    first_hand = (
+        "- Include AT LEAST ONE first-hand, anonymised example grounded in the "
+        "evidence above (e.g. \"In a JTBD study for a Series B HR-tech "
+        "company…\"). Generalise — NEVER name or otherwise identify the client."
+        if has_evidence else
+        "- Do NOT invent first-hand examples or case studies — there is no "
+        "evidence to ground them.")
 
     user = f"""## Brief (follow exactly)
 {json.dumps(brief, ensure_ascii=False)[:8000]}
 
 ## style_guide.md (obey)
 {style_guide[:4000]}
+
+## First-hand experience
+{first_hand}
 
 ## Evidence corpus passages (generalise — never quote client-identifying text)
 {ev[:9000]}

@@ -36,3 +36,11 @@ Legend: `[ ]` open · `[x]` covered (≥1 published post)
 - [ ] jobs-to-be-done
 - [ ] assumption & opportunity mapping
 - [ ] experiment design
+
+## Pillar: Product Research (B2B SaaS)
+> hub: /blog/product-research
+- [ ] jobs-to-be-done interviews (B2B)
+- [ ] win-loss analysis for B2B SaaS
+- [ ] recruiting B2B interview participants
+- [ ] pricing research for B2B SaaS
+- [ ] churn research for SaaS

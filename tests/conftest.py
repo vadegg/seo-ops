@@ -23,9 +23,19 @@ class FakeRunner:
     def __init__(self, strategist_score: float = 0.9):
         self.score = strategist_score
         self.calls: list[str] = []
+        # Mirror SDKAgentRunner.records so usage accounting (#5) is exercised.
+        self.records: list[dict] = []
 
     def run(self, *, name, system, user, model, tools, max_tokens, logger):
         self.calls.append(name)
+        out = self._canned(name=name, model=model)
+        self.records.append({
+            "agent": name, "model": model,
+            "input_tokens": max(1, len(user) // 4),
+            "output_tokens": max(1, len(out) // 4)})
+        return out
+
+    def _canned(self, *, name, model):
         if name == "researcher":
             return json.dumps({
                 "candidates": [
@@ -102,9 +112,8 @@ class FakeRunner:
 class FailingEditorRunner(FakeRunner):
     """Editor never passes the checklist (forces Opus final + hard alert)."""
 
-    def run(self, *, name, **kw):
+    def _canned(self, *, name, model):
         if name == "editor":
-            self.calls.append(name)
             return json.dumps({
                 "edited_markdown": "## Body\n\nText.\n",
                 "critique": {"checklist": {
@@ -112,7 +121,7 @@ class FailingEditorRunner(FakeRunner):
                     "internal_links": True, "evidence_grounded": True,
                     "no_client_leak": True}, "passed": False,
                     "notes": "style issues"}})
-        return super().run(name=name, **kw)
+        return super()._canned(name=name, model=model)
 
 
 # --------------------------------------------------------------------------
@@ -145,10 +154,12 @@ class FakeDFS:
 
 class FakeEvidence:
     def __init__(self, passages=None):
-        self._p = passages or [
+        # ``passages=[]`` must mean "empty corpus", not "use the default".
+        self._p = [
             {"file": "ux-notes.md",
              "text": "Across studies, task coverage matters more than raw "
-                     "participant count.", "score": 1.0}]
+                     "participant count.", "score": 1.0}
+        ] if passages is None else passages
 
     def search(self, query, k=8):
         return self._p[:k]

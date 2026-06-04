@@ -138,7 +138,15 @@ def _research_and_select(ctx: StepContext, ladder: EscalationLadder):
         ctx.logger.info("strategist score=%.3f threshold=%.2f",
                         score, SCORE_THRESHOLD)
 
-        if score >= SCORE_THRESHOLD or ladder.at_guarantee():
+        if score >= SCORE_THRESHOLD:
+            break
+        if ladder.at_guarantee():
+            # Accepting a below-threshold topic at the ceiling IS a
+            # degradation — WARN so the digest doesn't read as a clean run.
+            ctx.logger.warning("escalation ceiling reached (stage %d) — "
+                               "accepting best available topic (score %.2f "
+                               "below %.2f)", ladder.stage, score,
+                               SCORE_THRESHOLD)
             break
         if not ladder.escalate(f"topic score {score:.2f} below threshold"):
             break  # ceiling reached — accept best available
@@ -149,7 +157,7 @@ def _research_and_select(ctx: StepContext, ladder: EscalationLadder):
 def run_pipeline(cfg, *, run_date: str, dry_run: bool = False,
                  start_stage: int = 1, deps: PipelineDeps | None = None) -> int:
     run_dir = cfg.runs_dir / run_date
-    setup_run_logging(run_dir)
+    accumulator = setup_run_logging(run_dir)
     logger = get_agent_logger("orchestrator")
 
     logger.info("=== run start date=%s dry_run=%s ===", run_date, dry_run)
@@ -175,11 +183,13 @@ def run_pipeline(cfg, *, run_date: str, dry_run: bool = False,
 
         status = ctx.store.read_json(A.PUBLISHER)
         logger.info("=== run complete status=%s ===", status["status"])
+        _finalize_run(ctx, deps, run_dir, accumulator)
         return 0
 
     except Exception as exc:  # noqa: BLE001
         logger.exception("pipeline failed: %s", exc)
         escalation_log(run_dir, f"FATAL: {exc}")
+        logger.info("%s", accumulator.summary_block())
         try:
             if deps and deps.telegram:
                 deps.telegram.send(
@@ -193,6 +203,32 @@ def run_pipeline(cfg, *, run_date: str, dry_run: bool = False,
         return 1
 
 
+def _finalize_run(ctx, deps, run_dir, accumulator) -> None:
+    """End-of-run telemetry (#3/#5/#8): write usage.json, append the
+    degradation summary to run.log, send one consolidated Telegram digest.
+    Never raises — finalization must not turn a published run into a failure.
+    """
+    from pipeline import usage as U
+    from pipeline.steps import build_digest
+
+    try:
+        records = list(getattr(deps.agent_runner, "records", []) or [])
+        report = U.summarize(records, ctx.cfg.model_prices)
+        ctx.store.write_json("usage.json", report)
+    except Exception as exc:  # noqa: BLE001
+        ctx.logger.warning("usage accounting failed: %s", exc)
+        report = {}
+
+    ctx.logger.info("%s", accumulator.summary_block())
+
+    try:
+        text, level = build_digest(ctx, accumulator, report)
+        if deps.telegram:
+            deps.telegram.send(text, level=level)
+    except Exception as exc:  # noqa: BLE001
+        ctx.logger.warning("digest send failed: %s", exc)
+
+
 def run_selected_steps(cfg, *, run_date: str, step_names: list[str],
                        dry_run: bool = False, start_stage: int = 1,
                        force: bool = False,
@@ -200,7 +236,7 @@ def run_selected_steps(cfg, *, run_date: str, step_names: list[str],
     """Run an explicit subset of steps in isolation (single pass at
     ``start_stage``, no auto-escalation)."""
     run_dir = cfg.runs_dir / run_date
-    setup_run_logging(run_dir)
+    accumulator = setup_run_logging(run_dir)
     logger = get_agent_logger("orchestrator")
     logger.info("=== selected steps %s date=%s dry_run=%s stage=%d ===",
                 step_names, run_date, dry_run, start_stage)
@@ -213,6 +249,10 @@ def run_selected_steps(cfg, *, run_date: str, step_names: list[str],
                              stage=start_stage, force=force, logger=logger)
         run_steps(ctx, step_names)
         logger.info("=== selected steps complete ===")
+        # Same end-of-run telemetry as a full run: an isolated/resume run that
+        # scrubs a leak or forces a final rewrite must still alert, and a real
+        # `--from publisher` must still send the publish summary (#8).
+        _finalize_run(ctx, deps, run_dir, accumulator)
         return 0
     except S.StepInputError as exc:
         logger.error("%s", exc)

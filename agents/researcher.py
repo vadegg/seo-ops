@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import json
 
-from .runner import extract_json
+from .runner import run_json
+from .validation import validate_researcher
 
 SYSTEM_PROMPT = """\
 You are the Researcher for Glasgow Research's SEO blog (a UX & market
@@ -69,10 +70,9 @@ def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
 
 Return the JSON object now."""
 
-    out = runner.run(name="researcher", system=SYSTEM_PROMPT, user=user,
-                      model=model, tools=tools, max_tokens=max_tokens,
-                      logger=logger)
-    data = extract_json(out)
+    data = run_json(runner, name="researcher", system=SYSTEM_PROMPT, user=user,
+                    model=model, tools=tools, max_tokens=max_tokens,
+                    logger=logger, validate=validate_researcher)
     data.setdefault("candidates", [])
     data.setdefault("backlog_surplus", [])
     for c in data["candidates"]:

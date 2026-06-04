@@ -47,6 +47,42 @@ def extract_json(text: str):
     raise ValueError("agent did not return parseable JSON")
 
 
+def run_json(runner, *, name: str, system: str, user: str, model: str,
+             tools: list, max_tokens: int, logger, validate):
+    """Call an agent, parse + validate its JSON, and re-prompt once on
+    failure (#6). A second failure raises ``ClientError`` so the
+    orchestrator's escalation/alerts engage instead of shipping a
+    structurally-broken artifact.
+
+    ``validate`` is a callable that raises ``ValueError`` (e.g.
+    ``ValidationError``) when the parsed object breaks the agent contract.
+    """
+    from clients.retry import ClientError
+
+    def _attempt(u: str):
+        out = runner.run(name=name, system=system, user=u, model=model,
+                         tools=tools, max_tokens=max_tokens, logger=logger)
+        data = extract_json(out)
+        validate(data)
+        return data
+
+    try:
+        return _attempt(user)
+    except ValueError as first:
+        if logger:
+            logger.warning("agent %s output rejected (%s) — re-prompting once",
+                           name, first)
+        retry_user = (f"{user}\n\n## Your previous reply was INVALID\n"
+                      f"{first}\nReturn ONLY corrected JSON that matches the "
+                      f"schema. No prose.")
+        try:
+            return _attempt(retry_user)
+        except ValueError as second:
+            raise ClientError(
+                f"agent {name} returned invalid output twice: {second}"
+            ) from second
+
+
 # Anthropic server-side web search tool. The `name` field is required by the
 # API; the model runs the search server-side and returns results inline.
 _WEB_SEARCH_API_TOOL = {
@@ -64,6 +100,8 @@ class SDKAgentRunner:
 
     def __init__(self, api_key: str):
         self._api_key = api_key
+        # Per-turn token usage, accumulated across the whole run (#5).
+        self.records: list[dict] = []
 
     def run(self, *, name: str, system: str, user: str, model: str,
             tools: list[str], max_tokens: int, logger) -> str:
@@ -96,6 +134,16 @@ class SDKAgentRunner:
                 kwargs["tools"] = api_tools
 
             response = client.messages.create(**kwargs)
+
+            # Token usage for cost accounting (#5). Multi-turn web search
+            # produces one record per turn under the same agent name.
+            usage = getattr(response, "usage", None)
+            if usage is not None:
+                self.records.append({
+                    "agent": name, "model": model,
+                    "input_tokens": getattr(usage, "input_tokens", 0) or 0,
+                    "output_tokens": getattr(usage, "output_tokens", 0) or 0,
+                })
 
             # Collect text from this turn
             for block in response.content:

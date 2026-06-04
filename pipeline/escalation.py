@@ -77,11 +77,18 @@ class EscalationLadder:
         """
         if self.stage >= self.max_stage:
             self._record(self.stage, reason=f"at ceiling, accepting best: {reason}")
+            # Accepting a below-threshold topic IS a degradation — surface it
+            # as a WARN so the digest doesn't label a forced day as clean.
+            if self._log:
+                self._log.warning("escalation ceiling reached (stage %d) — "
+                                  "accepting best available: %s",
+                                  self.stage, reason)
             return False
         self.stage += 1
         self._record(self.stage, reason=reason)
-        if self._tg:
-            self._tg.send(f"degraded to escalation level {self.stage} "
-                          f"({STAGES[self.stage].model_key}) — {reason}",
-                          level="warn")
+        # Surface as a WARN so the run-log accumulator collects it and the
+        # single end-of-run digest reports it (#8) — no per-event Telegram spam.
+        if self._log:
+            self._log.warning("degraded to escalation level %d (%s) — %s",
+                              self.stage, STAGES[self.stage].model_key, reason)
         return True

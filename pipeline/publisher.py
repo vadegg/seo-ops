@@ -104,8 +104,30 @@ def publish(*, cfg, assembled, brief: dict, topic: dict, stage: int,
 
     git_client.ensure_clone()
     git_client.write_post(rel_path, assembled.markdown)
+
+    # Regenerate llms.txt (#17) and commit it alongside the post so AI search
+    # engines get an up-to-date site map. Best-effort: a render failure must
+    # never block the publish.
+    commit_paths = [rel_path]
+    try:
+        from pipeline import llms
+        il = json.loads((cfg.themes_dir / "internal_links.json")
+                        .read_text(encoding="utf-8"))
+        th = json.loads((cfg.backlog_dir / "topic_history.json")
+                        .read_text(encoding="utf-8"))
+        llms_content = llms.render(
+            site_name=cfg.site_name, author_name=cfg.author_name,
+            base_url=cfg.blog_base_url, internal_links=il, topic_history=th,
+            new_post={"title": brief.get("title") or topic.get("topic") or slug,
+                      "url": url, "slug": slug, "date": run_date})
+        llms_path = cfg.blog_llms_path.strip() or "public/llms.txt"
+        git_client.write_post(llms_path, llms_content)
+        commit_paths.append(llms_path)
+    except Exception as e:  # noqa: BLE001 — never block a publish
+        logger.warning("llms.txt generation skipped: %s", e)
+
     commit_msg = f"post: {brief.get('title', topic.get('topic', slug))}"
-    sha = git_client.commit_and_push([rel_path], commit_msg,
+    sha = git_client.commit_and_push(commit_paths, commit_msg,
                                      push=not dry_run)
 
     status = {

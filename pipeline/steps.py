@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
@@ -134,7 +134,33 @@ def ensure_evidence(ctx: StepContext, brief: dict | None = None) -> list:
             ctx.logger.warning("evidence retrieval failed: %s", e)
         evidence = []
     ctx.store.write_json(A.EVIDENCE, evidence)
+
+    # #4: a post with no first-hand fact is a real degradation — make it
+    # visible. Distinguish an empty/missing corpus from a query that simply
+    # matched nothing, so the fix is obvious.
+    if ctx.logger:
+        n = len(evidence)
+        if n > 0:
+            ctx.logger.info("evidence: %d passage(s) retrieved", n)
+        elif not _corpus_has_documents(ctx):
+            ctx.logger.warning("evidence empty: corpus directory has no "
+                               "indexable documents (EVIDENCE_DIR)")
+        else:
+            ctx.logger.warning("evidence empty: corpus is populated but the "
+                               "query matched no passages")
     return evidence
+
+
+def _corpus_has_documents(ctx: StepContext) -> bool:
+    """True if EVIDENCE_DIR holds at least one .md/.txt file."""
+    d = getattr(ctx.cfg, "evidence_dir", None)
+    if not d:
+        return False
+    try:
+        return any(p.suffix.lower() in {".md", ".txt"} and p.is_file()
+                   for p in Path(d).rglob("*"))
+    except OSError:
+        return False
 
 
 # --------------------------------------------------------------------------
@@ -153,15 +179,46 @@ def step_strategist(ctx: StepContext) -> None:
     strategist_pass(ctx, model_for_stage(ctx.cfg, ctx.stage), ctx.stage)
 
 
+def select_relevant_links(internal_links: dict, topic: dict,
+                          k: int = 8) -> dict:
+    """Pass the Outliner a cluster-relevant *subset* of the link map rather
+    than the whole list (#13), so it links contextually instead of at random.
+    Hubs are always included; posts are ranked by keyword overlap with the
+    topic's cluster + keywords, falling back to most-recent."""
+    posts = list(internal_links.get("posts", []))
+    terms = set()
+    for s in [topic.get("cluster", ""), topic.get("topic", ""),
+              topic.get("primary_keyword", "")] + list(
+                  topic.get("secondary_keywords", [])):
+        terms |= {w for w in re.split(r"[^a-z0-9]+", str(s).lower()) if len(w) > 3}
+
+    def overlap(p: dict) -> int:
+        hay = f"{p.get('cluster','')} {p.get('title','')}".lower()
+        words = {w for w in re.split(r"[^a-z0-9]+", hay) if len(w) > 3}
+        return len(words & terms)
+
+    ranked = sorted(posts, key=lambda p: (overlap(p), p.get("date", "")),
+                    reverse=True)
+    chosen = [p for p in ranked if overlap(p) > 0][:k]
+    if not chosen:  # no semantic hit — still offer the most recent few
+        chosen = ranked[:min(k, 3)]
+    return {"hubs": internal_links.get("hubs", {}), "posts": chosen}
+
+
 def step_outliner(ctx: StepContext) -> None:
     topic = ctx.store.read_json(A.STRATEGIST)
     stage = int(topic.get("_escalation_stage", ctx.stage))
+    full_map = ctx.stores["internal_links"]
+    corpus = len(full_map.get("posts", []))
+    relevant = select_relevant_links(full_map, topic)
+    min_links = (ctx.cfg.internal_link_floor
+                 if corpus >= ctx.cfg.internal_link_min_corpus else 0)
     brief = outliner.run(
         ctx.deps.agent_runner, model=model_for_stage(ctx.cfg, stage),
         tools=tools_for_stage(stage), max_tokens=ctx.cfg.agent_max_tokens,
         logger=ctx.logger, topic=topic,
         content_map=ctx.stores["content_map"],
-        internal_links=ctx.stores["internal_links"])
+        internal_links=relevant, min_links=min_links)
     ctx.store.write_json(A.OUTLINER, brief)
 
 
@@ -185,12 +242,20 @@ def step_editor(ctx: StepContext) -> None:
 
     current = draft
     for iteration in (1, 2):
-        result = editor.run(
-            ctx.deps.agent_runner, model=ctx.cfg.model_sonnet, tools=[],
-            max_tokens=ctx.cfg.agent_max_tokens, logger=ctx.logger,
-            draft_md=current, brief=brief,
-            style_guide=ctx.stores["style_guide"],
-            evidence_passages=evidence, iteration=iteration)
+        try:
+            result = editor.run(
+                ctx.deps.agent_runner, model=ctx.cfg.model_sonnet, tools=[],
+                max_tokens=ctx.cfg.agent_max_tokens, logger=ctx.logger,
+                draft_md=current, brief=brief,
+                style_guide=ctx.stores["style_guide"],
+                evidence_passages=evidence, iteration=iteration)
+        except ClientError as e:
+            # Persistently-invalid editor output must NOT abandon the day —
+            # fall through to the forced final on the best draft so far.
+            if ctx.logger:
+                ctx.logger.warning("editor iteration %d failed validation "
+                                   "(%s) — continuing", iteration, e)
+            continue
         current = result["edited_markdown"]
         critique = result["critique"]
         if critique.get("passed"):
@@ -201,19 +266,31 @@ def step_editor(ctx: StepContext) -> None:
     if ctx.logger:
         ctx.logger.warning("editor did not pass in 2 iterations — "
                            "final Opus rewrite")
-    result = editor.run(
-        ctx.deps.agent_runner, model=ctx.cfg.model_opus, tools=[],
-        max_tokens=ctx.cfg.agent_max_tokens, logger=ctx.logger,
-        draft_md=current, brief=brief, style_guide=ctx.stores["style_guide"],
-        evidence_passages=evidence, iteration=3, final=True)
-    current = result["edited_markdown"]
-    critique = result["critique"]
+    try:
+        result = editor.run(
+            ctx.deps.agent_runner, model=ctx.cfg.model_opus, tools=[],
+            max_tokens=ctx.cfg.agent_max_tokens, logger=ctx.logger,
+            draft_md=current, brief=brief,
+            style_guide=ctx.stores["style_guide"],
+            evidence_passages=evidence, iteration=3, final=True)
+        current = result["edited_markdown"]
+        critique = result["critique"]
+    except ClientError as e:
+        # Last-resort fallback: ship the best draft we have rather than crash
+        # the run. The "never abandons the day" contract wins over a clean
+        # critique — the hard alert below still flags it for manual review.
+        if ctx.logger:
+            ctx.logger.warning("editor forced-final also failed validation "
+                               "(%s) — shipping best available draft", e)
+        critique = {"checklist": {}, "passed": False,
+                    "notes": f"forced-final validation failed: {e}"}
     critique["forced_final"] = True
     escalation_log(ctx.run_dir, "editor: forced Opus final rewrite after 2 fails")
-    if ctx.deps.telegram:
-        ctx.deps.telegram.send(
-            "Редактор не прошёл чеклист за 2 попытки — опубликована лучшая "
-            "версия (Opus). Нужна ручная проверка.", level="hard")
+    # ERROR so the digest escalates to a hard alert and the run-log summary
+    # flags it; the consolidated digest (#8) carries the user-facing note.
+    if ctx.logger:
+        ctx.logger.error("editor did not pass the checklist in 2 iterations — "
+                         "published the best (Opus) version; needs manual review")
     ctx.store.write_text(A.EDITOR_MD, current)
     ctx.store.write_json(A.EDITOR_CRITIQUE, critique)
 
@@ -230,7 +307,16 @@ def step_assembler(ctx: StepContext) -> None:
         site_name=ctx.cfg.site_name, base_url=ctx.cfg.blog_base_url,
         run_date=ctx.run_date,
         author_name=ctx.cfg.author_name, author_slug=ctx.cfg.author_slug,
-        default_category=ctx.cfg.default_category)
+        default_category=ctx.cfg.default_category,
+        cta_text=ctx.cfg.cta_text, cta_url=ctx.cfg.cta_url,
+        tool_disclosure=ctx.cfg.tool_disclosure,
+        author_url=ctx.cfg.author_url,
+        author_same_as=ctx.cfg.author_same_as,
+        org_same_as=ctx.cfg.org_same_as,
+        default_og_image=ctx.cfg.default_og_image,
+        internal_link_floor=ctx.cfg.internal_link_floor,
+        internal_link_min_corpus=ctx.cfg.internal_link_min_corpus,
+        logger=ctx.logger)
     ctx.store.write_text(A.ASSEMBLER, assembled.markdown)
     ctx.store.write_json(A.ASSEMBLER_META, {
         "slug": assembled.slug,
@@ -243,11 +329,12 @@ def step_assembler(ctx: StepContext) -> None:
             ctx.run_dir,
             f"confidentiality: scrubbed {len(assembled.leak_evidence)} "
             f"line(s) before publish")
-        if ctx.deps.telegram:
-            ctx.deps.telegram.send(
-                f"В черновике найдены конфиденциальные маркеры — вычищены "
-                f"перед публикацией ({len(assembled.leak_evidence)} стр.). "
-                f"Проверь обработку evidence.", level="hard")
+        # ERROR -> hard digest + run-log summary (#3/#8).
+        if ctx.logger:
+            ctx.logger.error(
+                "confidentiality: scrubbed %d line(s) with confidential "
+                "markers before publish — check evidence handling",
+                len(assembled.leak_evidence))
 
 
 def step_publisher(ctx: StepContext) -> None:
@@ -280,11 +367,8 @@ def step_publisher(ctx: StepContext) -> None:
         surplus=research.get("backlog_surplus") or [],
         published_keyword=brief.get("primary_keyword", ""))
     ctx.store.write_json(A.PUBLISHER, status)
-
-    if ctx.deps.telegram and not ctx.dry_run:
-        ctx.deps.telegram.send(
-            _publish_report(ctx, brief, topic, status, post_md, stage),
-            level="info")
+    # The per-publish Telegram message is gone: the orchestrator sends one
+    # consolidated end-of-run digest instead (#8), reusing _publish_report.
 
 
 def _publish_report(ctx, brief: dict, topic: dict, status: dict,
@@ -306,11 +390,13 @@ def _publish_report(ctx, brief: dict, topic: dict, status: dict,
     except (OSError, ValueError):
         pass
 
+    header = ("Опубликована новая статья" if status.get("status") == "published"
+              else "Статья собрана")
     lines = [
-        "Опубликована новая статья",
+        header,
         "",
         f"📝 Тема: {title}",
-        f"🔗 {status['url']}",
+        f"🔗 {status.get('url', '(нет URL)')}",
         f"📄 {desc}",
         "",
         f"🎯 Стадия эскалации: {stage}",
@@ -324,6 +410,58 @@ def _publish_report(ctx, brief: dict, topic: dict, status: dict,
         lines.append("⏭️ Следующие кандидаты на очереди:")
         lines.extend(nxt)
     return "\n".join(lines)
+
+
+def build_digest(ctx: StepContext, accumulator, usage_report: dict) -> tuple:
+    """One consolidated end-of-run message (#8): publish summary +
+    degradations (#3) + token/$ usage (#5). Returns (text, level) where
+    level is hard on a leak/forced-final, warn on any degradation, else info.
+    """
+    store = ctx.store
+    status = store.read_json(A.PUBLISHER) if store.exists(A.PUBLISHER) else {}
+    brief = store.read_json(A.OUTLINER) if store.exists(A.OUTLINER) else {}
+    topic = store.read_json(A.STRATEGIST) if store.exists(A.STRATEGIST) else {}
+    post_md = store.read_text(A.ASSEMBLER) if store.exists(A.ASSEMBLER) else ""
+    stage = int(status.get("escalation_stage", ctx.stage))
+
+    leaked = bool(status.get("confidential_leak_scrubbed"))
+    critique = (store.read_json(A.EDITOR_CRITIQUE)
+                if store.exists(A.EDITOR_CRITIQUE) else {})
+    forced = bool(critique.get("forced_final"))
+    degr = list(getattr(accumulator, "degradations", []))
+    has_error = any(d["level"] == "ERROR" for d in degr)
+
+    level = "hard" if (leaked or forced or has_error) else (
+        "warn" if degr else "info")
+
+    # An isolated step subset may not have produced a publishable post; only
+    # render the publish summary when there's something to report.
+    if status or brief or topic:
+        parts = [_publish_report(ctx, brief, topic, status, post_md, stage)]
+        if status.get("status") == "dry_run":
+            parts[0] = "[dry-run] " + parts[0]
+    else:
+        parts = [f"Прогон завершён ({ctx.run_date})"]
+
+    if degr:
+        parts.append("")
+        parts.append(f"⚠️ Деградации ({len(degr)}):")
+        parts.extend(f"  • {d['level']} | {d['agent']} | {d['message']}"
+                     for d in degr)
+
+    # One run == one article, so the run total IS the cost of writing this
+    # article (#5). State it explicitly so it reads as the article's price.
+    total = usage_report.get("total", {}) if usage_report else {}
+    if total:
+        def _n(v: int) -> str:           # space thousands separator
+            return f"{int(v):,}".replace(",", " ")
+        parts.append("")
+        parts.append(
+            f"💸 Стоимость статьи: ~${total.get('usd', 0):.2f} "
+            f"({_n(total.get('input_tokens', 0))} вход / "
+            f"{_n(total.get('output_tokens', 0))} выход токенов)")
+
+    return "\n".join(parts), level
 
 
 # --------------------------------------------------------------------------

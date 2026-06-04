@@ -85,6 +85,39 @@ class Config:
     backlog_score_floor: float = 0.4
     backlog_max_size: int = 50
 
+    # Conversion footer (#11) — appended to every post body.
+    cta_text: str = ("Glasgow Research helps B2B SaaS teams turn customer "
+                     "and market research into product decisions.")
+    cta_url: str = "https://glasgow.works"
+
+    # FTC paid-tool disclosure (#16).
+    tool_disclosure: str = ("Disclosure: this article may mention paid tools. "
+                            "We receive no compensation for any mention; "
+                            "recommendations are based on hands-on use.")
+
+    # Author / org identity for richer JSON-LD (#12). Empty = omitted, never
+    # fabricated. CSV env vars -> tuples of profile URLs (sameAs).
+    author_url: str = ""
+    author_same_as: tuple = ()
+    org_same_as: tuple = ()
+    default_og_image: str = ""
+
+    # Internal-link floor for a sufficiently-built corpus (#13).
+    internal_link_floor: int = 3
+    internal_link_min_corpus: int = 4
+
+    # Where llms.txt is written in the blog repo (Astro serves public/ at root).
+    blog_llms_path: str = "public/llms.txt"
+
+    # Per-million-token USD prices for cost accounting (#5):
+    # (model_id, input_price_per_mtok, output_price_per_mtok).
+    model_prices: tuple = (
+        ("claude-opus-4-7", 15.0, 75.0),
+        ("claude-opus-4-8", 15.0, 75.0),
+        ("claude-sonnet-4-6", 3.0, 15.0),
+        ("claude-haiku-4-5-20251001", 1.0, 5.0),
+    )
+
     # IndexNow (post-publish indexation ping). Empty key disables it.
     indexnow_key: str = ""
     indexnow_endpoint: str = "https://api.indexnow.org/indexnow"
@@ -151,6 +184,10 @@ class Config:
             except ValueError:
                 return default
 
+        def _csv(name: str) -> tuple:
+            raw = os.environ.get(name, "").strip()
+            return tuple(p.strip() for p in raw.split(",") if p.strip())
+
         blog_base_url = os.environ.get(
             "BLOG_BASE_URL", "https://blog.glasgow.works/blog"
         ).strip().rstrip("/")
@@ -187,6 +224,22 @@ class Config:
             default_category=os.environ.get("DEFAULT_CATEGORY", "Research").strip(),
             backlog_score_floor=_float("BACKLOG_SCORE_FLOOR", 0.4),
             backlog_max_size=_int("BACKLOG_MAX_SIZE", 50),
+            cta_text=os.environ.get(
+                "CTA_TEXT",
+                "Glasgow Research helps B2B SaaS teams turn customer and "
+                "market research into product decisions.").strip(),
+            cta_url=os.environ.get("CTA_URL", "https://glasgow.works").strip(),
+            tool_disclosure=os.environ.get(
+                "TOOL_DISCLOSURE",
+                "Disclosure: this article may mention paid tools. We receive "
+                "no compensation for any mention; recommendations are based "
+                "on hands-on use.").strip(),
+            author_url=os.environ.get("AUTHOR_URL", "").strip(),
+            author_same_as=_csv("AUTHOR_SAME_AS"),
+            org_same_as=_csv("ORG_SAME_AS"),
+            default_og_image=os.environ.get("DEFAULT_OG_IMAGE", "").strip(),
+            blog_llms_path=os.environ.get(
+                "BLOG_LLMS_PATH", "public/llms.txt").strip(),
             indexnow_key=os.environ.get(
                 "INDEXNOW_KEY",
                 "129ebf08-3db2-4d2f-bf33-9ea41ef4cc90").strip(),

@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import json
 
-from .runner import extract_json
+from .runner import run_json
+from .validation import validate_editor
 
 SYSTEM_PROMPT = """\
 You are the Editor/Critic for Glasgow Research's SEO blog. Improve the
@@ -22,6 +23,9 @@ The checklist (all must be true to pass):
 - seo: title<=60, meta 140-160, primary keyword used naturally, good H2s
 - internal_links: only the brief's anchor/URL pairs, placed naturally
 - evidence_grounded: non-obvious claims supported, no fabricated stats
+- first_hand_present: when evidence was supplied, at least one first-hand,
+  anonymised example is present; when no evidence was supplied, none is
+  invented (either way this item is true)
 - no_client_leak: NO client-identifying or confidential material; only
   generalised, aggregated insight (this one is non-negotiable)
 
@@ -68,10 +72,9 @@ def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
 
 Return the JSON object now."""
 
-    out = runner.run(name="editor", system=SYSTEM_PROMPT, user=user,
-                      model=model, tools=tools, max_tokens=max_tokens,
-                      logger=logger)
-    data = extract_json(out)
+    data = run_json(runner, name="editor", system=SYSTEM_PROMPT, user=user,
+                    model=model, tools=tools, max_tokens=max_tokens,
+                    logger=logger, validate=validate_editor)
     crit = data.setdefault("critique", {})
     cl = crit.setdefault("checklist", {})
     crit["passed"] = bool(crit.get("passed")) and all(

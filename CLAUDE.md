@@ -41,6 +41,10 @@ The five LLM agents (Researcher, Strategist, Outliner, Writer, Editor) live in `
 
 **Artifacts** (`pipeline/artifacts.py`): Each step writes a numbered file to `runs/<YYYY-MM-DD>/` (e.g. `01-researcher.candidates.json`). A step whose output artifact already exists is skipped (resume). A completed `07-publisher.status.json` with `status=published` makes the whole run a no-op.
 
+**Resume vs. `--force` (rerun invariant).** Re-running a step is idempotent: if its output artifact is already on disk it is *skipped* (`run_steps`, `pipeline/steps.py`). `--force` re-runs the step and **overwrites** its single artifact via `write_json`/`write_text` — it never appends or accumulates. So re-running the Researcher with `--force` replaces `01-researcher.candidates.json` with one fresh object; it does not grow the candidate list. Growth of the reusable keyword reserve is a *separate* concern owned by the Publisher (`_reconcile_keyword_backlog`, floor+cap). Covered by `test_force_overwrites_researcher_not_appends`.
+
+**Run telemetry** (`logging_setup.RunLogAccumulator`, `pipeline/usage.py`): every run collects WARN/ERROR into a degradation summary (written to `run.log`) and per-agent token/USD usage (written to `runs/<date>/usage.json`). `run_pipeline` sends **one** consolidated Telegram digest at the end (publish summary + degradations + tokens/$); only a fatal crash keeps its own immediate hard alert. Per-event alerts (escalation, forced-final editor, confidentiality scrub) are surfaced as WARN/ERROR log records that feed both the summary and the digest.
+
 **Escalation** (`pipeline/escalation.py`): 4-stage ladder. Strategist scores the topic 0..1; below threshold → escalate to next stage (Sonnet → Opus, looser data sources, then evergreen guarantee). Every transition is logged to `runs/<date>/escalation.log`. Stage 4 is API-independent and always succeeds.
 
 **Dependency injection:** `run_pipeline(..., deps=PipelineDeps)` — all external clients (GSC, DataForSEO, Telegram, Git, Evidence) are passed in. Tests swap them for fakes in `tests/conftest.py`.

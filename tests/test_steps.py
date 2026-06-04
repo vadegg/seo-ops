@@ -88,6 +88,24 @@ def test_resume_skips_and_force_reruns(project, deps_factory):
     assert forced.agent_runner.calls == ["researcher"]
 
 
+def test_force_overwrites_researcher_not_appends(project, deps_factory):
+    """#9 invariant: --force re-runs the Researcher and OVERWRITES 01 with a
+    single fresh object — it never accumulates/appends candidates."""
+    run_selected_steps(project, run_date="2026-05-19",
+                       step_names=["researcher"], dry_run=True,
+                       deps=deps_factory())
+    first = json.loads(_store(project).path(A.RESEARCHER).read_text())
+
+    run_selected_steps(project, run_date="2026-05-19",
+                       step_names=["researcher"], dry_run=True, force=True,
+                       deps=deps_factory())
+    second = json.loads(_store(project).path(A.RESEARCHER).read_text())
+
+    # still one object, candidate count unchanged (overwrite, not append)
+    assert isinstance(second, dict)
+    assert len(second["candidates"]) == len(first["candidates"])
+
+
 def test_isolated_researcher_does_not_escalate(project, deps_factory):
     deps = deps_factory()
     run_selected_steps(project, run_date="2026-05-19",
