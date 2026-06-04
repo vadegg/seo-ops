@@ -22,7 +22,7 @@ from typing import Callable
 
 from clients.retry import ClientError
 from clients.websearch import tools_for_stage
-from logging_setup import escalation_log
+from logging_setup import escalation_log, get_agent_logger
 from pipeline import artifacts as A
 from pipeline.artifacts import ArtifactStore
 from pipeline.assembler import assemble
@@ -384,6 +384,15 @@ def run_steps(ctx: StepContext, selected: list[str]) -> None:
                     f"cannot run '{step.name}': missing input {inp}"
                     + (f" — run '{hint}' first" if hint else ""))
 
-        if ctx.logger:
-            ctx.logger.info("=== step %s (stage %d) ===", step.name, ctx.stage)
-        step.fn(ctx)
+        # Tag every line this step emits (incl. SDKAgentRunner's "agent ->
+        # model" line) with the real agent name instead of "orchestrator".
+        orig_logger = ctx.logger
+        if orig_logger is not None:
+            ctx.logger = get_agent_logger(step.name)
+        try:
+            if ctx.logger:
+                ctx.logger.info("=== step %s (stage %d) ===",
+                                step.name, ctx.stage)
+            step.fn(ctx)
+        finally:
+            ctx.logger = orig_logger

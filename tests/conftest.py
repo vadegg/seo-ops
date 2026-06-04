@@ -182,13 +182,21 @@ class FakeTelegram:
 @pytest.fixture
 def project(tmp_path) -> Config:
     """A Config rooted in a tmp copy of the persistent stores."""
-    for rel in ("backlog/keyword_backlog.json", "backlog/topic_history.json",
-                "backlog/seed_topics.md", "themes/content_map.md",
+    # Static config copied as-is; the two volatile stores accumulate real
+    # published data in the repo, so seed them empty for deterministic tests.
+    for rel in ("backlog/seed_topics.md", "themes/content_map.md",
                 "themes/internal_links.json", "style_guide.md"):
         src = ROOT / rel
         dst = tmp_path / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(src, dst)
+    (tmp_path / "backlog").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "backlog" / "keyword_backlog.json").write_text(
+        json.dumps({"schema": "keyword_backlog/v1", "candidates": []}),
+        encoding="utf-8")
+    (tmp_path / "backlog" / "topic_history.json").write_text(
+        json.dumps({"schema": "topic_history/v1", "published": []}),
+        encoding="utf-8")
     evidence_dir = tmp_path / "evidence"
     evidence_dir.mkdir()
     (evidence_dir / "notes.md").write_text(

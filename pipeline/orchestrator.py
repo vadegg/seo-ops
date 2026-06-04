@@ -122,8 +122,17 @@ def _research_and_select(ctx: StepContext, ladder: EscalationLadder):
             continue
 
         ctx.stage = ladder.stage
-        researcher_pass(ctx, spec, model, tools, gsc_rows, dfs_metrics)
-        topic = strategist_pass(ctx, model, ladder.stage)
+        orch_logger = ctx.logger
+        ctx.logger = get_agent_logger("researcher")
+        try:
+            researcher_pass(ctx, spec, model, tools, gsc_rows, dfs_metrics)
+        finally:
+            ctx.logger = orch_logger
+        ctx.logger = get_agent_logger("strategist")
+        try:
+            topic = strategist_pass(ctx, model, ladder.stage)
+        finally:
+            ctx.logger = orch_logger
 
         score = float(topic.get("score", 0.0))
         ctx.logger.info("strategist score=%.3f threshold=%.2f",

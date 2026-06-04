@@ -126,6 +126,22 @@ def test_dry_run_leaves_backlog_untouched(project, deps_factory):
     assert (project.backlog_dir / "keyword_backlog.json").read_text() == before
 
 
+def test_run_log_tags_each_step_with_its_agent_name(project, deps_factory):
+    run_selected_steps(project, run_date="2026-05-19",
+                       step_names=STEP_NAMES, dry_run=True, deps=deps_factory())
+    log = (project.runs_dir / "2026-05-19" / "run.log").read_text()
+    # map "=== step <name> ===" lines to the agent column (2nd field)
+    seen = {}
+    for line in log.splitlines():
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) >= 4 and parts[3].startswith("=== step "):
+            name = parts[3].split()[2]
+            seen[name] = parts[1]
+    assert seen, "no step lines found in run.log"
+    for name, agent in seen.items():
+        assert agent == name, f"{name} line tagged as {agent!r}"
+
+
 def test_reconcile_floor_and_cap(tmp_path):
     path = tmp_path / "keyword_backlog.json"
     path.write_text(json.dumps({"candidates": []}))

@@ -73,10 +73,23 @@ def test_category_from_brief_overrides_default():
     assert 'category: "Methods"' in md
 
 
-@pytest.mark.parametrize("desc", ["too short", "x" * 200])
-def test_description_out_of_range_raises(desc):
+def test_description_too_short_raises():
+    # A too-short description can't be invented -> hard fail.
     with pytest.raises(AssemblyError):
-        _assemble(_brief(meta_description=desc))
+        _assemble(_brief(meta_description="too short"))
+
+
+def test_description_too_long_is_clamped_into_window():
+    # LLMs reliably overshoot; an over-long description is trimmed to the
+    # 150-160 window at a word boundary rather than aborting the run.
+    long_desc = ("This is a deliberately over-long meta description that "
+                 "keeps going well past the one hundred and sixty character "
+                 "ceiling so the assembler has to clamp it down to size.")
+    assert len(long_desc) > 160
+    md = _assemble(_brief(meta_description=long_desc)).markdown
+    m = re.search(r'^description: "(.*)"$', md, re.MULTILINE)
+    assert m is not None
+    assert 150 <= len(m.group(1)) <= 160
 
 
 def test_description_whitespace_normalized_for_length_check():
