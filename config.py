@@ -152,7 +152,7 @@ class Config:
                 return default
 
         blog_base_url = os.environ.get(
-            "BLOG_BASE_URL", "https://glasgowresearch.com/blog"
+            "BLOG_BASE_URL", "https://blog.glasgow.works/blog"
         ).strip().rstrip("/")
 
         from urllib.parse import urlsplit

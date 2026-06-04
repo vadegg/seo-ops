@@ -213,7 +213,7 @@ def project(tmp_path) -> Config:
         telegram_chat_id="c", blog_repo_url="git@example:repo.git",
         git_deploy_key=key, blog_branch="main",
         blog_posts_dir="src/content/blog",
-        blog_base_url="https://glasgowresearch.com/blog",
+        blog_base_url="https://blog.glasgow.works/blog",
         evidence_dir=evidence_dir, project_root=tmp_path)
 
 

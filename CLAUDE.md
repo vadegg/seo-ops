@@ -77,6 +77,25 @@ The pipeline treats leakage of this material as a correctness property: the Edit
 
 Default: `claude-sonnet-4-6` (stages 1–2), `claude-opus-4-7` (stages 3–4 and forced-final editor rewrite). Overridable via `MODEL_SONNET` / `MODEL_OPUS` env vars or `--max-stage` CLI flag.
 
+## GitHub Issues
+
+Before running `gh issue create`, first write a detailed implementation spec
+(problem with `file:line` refs, why it matters, what to implement, affected
+files, acceptance criteria, dependencies) — never a one-line title. Only the
+priority labels (`prio:high`/`prio:medium`) are used; no role/area/source
+labels. Full convention: `.github/ISSUE_GUIDELINES.md`.
+
 ## Deployment
 
-Runs on a VPS at `/opt/seo-autoblog` via systemd (`deploy/seo-autoblog.{service,timer}`): a `oneshot` service fires `python run.py` once daily (timer `OnCalendar=07:00`, interpreted in the host TZ — set it to Europe/Lisbon). Orchestrator idempotency makes a manual `systemctl start` or retry safe — a day already `published` is a no-op.
+- host: `clawd@167.235.134.6`        # SSH target (key on laptop)
+- path: `/home/clawd/seo/seo-autoblog`  # project dir on the server
+- branch: `main`                     # branch the server tracks
+- rebuild: none (cron picks up new code next run; reinstall deps only if `requirements.txt` changed)
+
+Runs on a VPS via a **user crontab** entry (NOT the systemd units in `deploy/` — those are an unused artifact and are not installed on the host):
+
+```
+0 1 * * *  cd /home/clawd/seo/seo-autoblog && .venv/bin/python run.py >> runs/cron-daily.log 2>&1
+```
+
+Fires `python run.py` once daily at **01:00 UTC** (server TZ is UTC = 02:00 Europe/Lisbon in summer / 01:00 in winter). Orchestrator idempotency makes a manual rerun safe — a day already `published` is a no-op. To deploy a push: `ssh <host> 'cd <path> && git fetch origin main && git merge --ff-only origin/main'`.

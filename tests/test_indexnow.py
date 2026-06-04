@@ -66,7 +66,7 @@ def _run_publish(project, *, dry_run, monkeypatch, blow_up=False):
     from pipeline import publisher
     cfg = dataclasses.replace(
         project, indexnow_key=KEY,
-        indexnow_site_url="https://glasgowresearch.com")
+        indexnow_site_url="https://blog.glasgow.works")
     calls = []
 
     def fake_submit(site, page, **kw):
@@ -105,8 +105,8 @@ def test_real_publish_pings_indexnow(project, monkeypatch):
     calls = _run_publish(project, dry_run=False, monkeypatch=monkeypatch)
     assert len(calls) == 1
     site, page = calls[0]
-    assert site == "https://glasgowresearch.com"
-    assert page == "https://glasgowresearch.com/blog/foo/"  # trailing slash
+    assert site == "https://blog.glasgow.works"
+    assert page == "https://blog.glasgow.works/blog/foo/"  # trailing slash
 
 
 def test_dry_run_does_not_ping(project, monkeypatch):

@@ -100,7 +100,7 @@ degraded days. `MAX_STAGE` / `AGENT_MAX_TOKENS` cap it via config.
 
 ## Tests
 
-`pytest` (17 tests, no network/SDK — all clients & the agent runner are
+`pytest` (40 tests, no network/SDK — all clients & the agent runner are
 dependency-injected and faked):
 
 - config validation (all missing secrets reported at once)
