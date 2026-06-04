@@ -23,19 +23,16 @@ The checklist (all must be true to pass):
 - seo: title<=60, meta 140-160, primary keyword used naturally, good H2s
 - internal_links: only the brief's anchor/URL pairs, placed naturally
 - evidence_grounded: non-obvious claims supported, no fabricated stats
-- first_hand_present: when evidence was supplied, at least one first-hand,
-  anonymised example is present; when no evidence was supplied, none is
-  invented (either way this item is true)
-- no_client_leak: NO client-identifying or confidential material; only
-  generalised, aggregated insight (this one is non-negotiable)
+- first_hand_present: when evidence was supplied, at least one first-hand
+  example is present; when no evidence was supplied, none is invented
+  (either way this item is true)
 
 Output ONE JSON object, no prose:
 {
   "edited_markdown": str,        // the improved full body, Markdown
   "critique": {
     "checklist": {"on_brief": bool, "style_guide": bool, "seo": bool,
-      "internal_links": bool, "evidence_grounded": bool,
-      "no_client_leak": bool},
+      "internal_links": bool, "evidence_grounded": bool},
     "passed": bool,              // true only if every checklist item true
     "notes": str
   }
@@ -67,7 +64,7 @@ def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
 ## style_guide.md
 {style_guide[:3500]}
 
-## Evidence (verify claims are supported & not client-identifying)
+## Evidence (verify claims are supported)
 {ev[:7000]}
 
 Return the JSON object now."""

@@ -18,7 +18,6 @@ def test_full_pipeline_dry_run(project, deps_factory):
     post = s.read_text(A.ASSEMBLER)
     assert post.startswith("---\n")
     assert "application/ld+json" in post
-    assert "CONFIDENTIAL" not in post.upper()
 
     status = s.read_json(A.PUBLISHER)
     assert status["status"] == "dry_run"

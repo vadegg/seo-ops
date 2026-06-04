@@ -8,7 +8,6 @@ from pipeline.artifacts import ArtifactStore
 from pipeline.orchestrator import run_pipeline, run_selected_steps
 from pipeline.steps import STEP_NAMES
 from tests.conftest import FakeRunner
-from tests.test_confidentiality import LeakyRunner
 
 
 class EditorGarbageRunner(FakeRunner):
@@ -40,13 +39,6 @@ def test_selected_steps_send_digest(project, deps_factory):
     run_selected_steps(project, run_date="2026-05-19", step_names=STEP_NAMES,
                        dry_run=True, deps=deps)
     assert len(deps.telegram.messages) == 1          # finalize ran
-
-
-def test_selected_steps_leak_sends_hard_alert(project, deps_factory):
-    deps = deps_factory(runner=LeakyRunner(strategist_score=0.9))
-    run_selected_steps(project, run_date="2026-05-19", step_names=STEP_NAMES,
-                       dry_run=True, deps=deps)
-    assert any(level == "hard" for level, _ in deps.telegram.messages)
 
 
 # ---- #4 ceiling acceptance is a degradation, not a clean run --------------

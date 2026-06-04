@@ -2,10 +2,6 @@
 
 Returns top passages plus the source filename so the Writer can ground
 claims and the Editor can verify support. No external dependency.
-
-Confidentiality: this layer only retrieves. The Writer is instructed to
-use evidence as *generalised insight*, never verbatim client-identifying
-text; the Editor checklist and the assembler scrub enforce it downstream.
 """
 
 from __future__ import annotations

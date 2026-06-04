@@ -1,7 +1,7 @@
 """Step 6 — Assembler (deterministic code, no LLM).
 
 Builds the final publishable post: Astro frontmatter + body + internal
-links sanity + JSON-LD + image alts, with a hard confidentiality scrub.
+links sanity + JSON-LD + image alts.
 """
 
 from __future__ import annotations
@@ -9,22 +9,6 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-
-# Tokens that must never reach a published post. The first is the
-# verification marker; the rest are generic confidentiality flags.
-_CONFIDENTIAL_TOKENS = [
-    "CONFIDENTIAL",
-    "DO NOT DISTRIBUTE",
-    "CLIENT CONFIDENTIAL",
-    "NDA",
-]
-
-# Match tokens only as whole words — a bare substring match flags "NDA"
-# inside "sta(nda)rd"/"bou(nda)ry" and silently deletes legitimate prose.
-_CONFIDENTIAL_PATTERNS = [
-    re.compile(r"\b" + re.escape(tok) + r"\b", re.IGNORECASE)
-    for tok in _CONFIDENTIAL_TOKENS
-]
 
 # Blog content-collection constraints (blog/src/content/config.ts +
 # blog/src/lib/metadata.ts). A post violating these fails `astro build`
@@ -64,26 +48,6 @@ def _fit_meta_description(value: str) -> str:
 class AssembledPost:
     markdown: str
     slug: str
-    leaked: bool          # True if confidential tokens were found+scrubbed
-    leak_evidence: list
-
-
-def scrub_confidential(text: str) -> tuple[str, list]:
-    """Redact any line containing a confidential token. Returns the
-    cleaned text and the list of offending (redacted) source lines.
-    """
-    hits: list = []
-    out_lines: list[str] = []
-    for line in text.splitlines():
-        if any(p.search(line) for p in _CONFIDENTIAL_PATTERNS):
-            hits.append(line.strip())
-            continue  # drop the line entirely
-        out_lines.append(line)
-    cleaned = "\n".join(out_lines)
-    # Belt-and-braces: nuke any residual whole-word token occurrences.
-    for p in _CONFIDENTIAL_PATTERNS:
-        cleaned = p.sub("[redacted]", cleaned)
-    return cleaned, hits
 
 
 def _yaml_escape(s: str) -> str:
@@ -268,8 +232,7 @@ def assemble(*, edited_markdown: str, brief: dict, topic: dict,
              org_same_as: tuple = (), default_og_image: str = "",
              internal_link_floor: int = 3, internal_link_min_corpus: int = 4,
              logger=None) -> AssembledPost:
-    body, hits = scrub_confidential(edited_markdown)
-    leaked = bool(hits)
+    body = edited_markdown
 
     title = (brief.get("title") or topic.get("topic", "")).strip()
     slug = _slugify(brief.get("slug") or brief.get("title")
@@ -346,12 +309,4 @@ def assemble(*, edited_markdown: str, brief: dict, topic: dict,
                      image_url=image_url)
     markdown = "\n".join(fm) + body.strip() + "\n\n" + jsonld + "\n"
 
-    # Final guarantee: no confidential token survived. Use the same
-    # whole-word patterns as the scrub — a bare substring check here
-    # false-positives on legitimate prose ("confidentiality", "NDA"
-    # inside "standard") that the scrub deliberately preserves.
-    assert not any(p.search(markdown) for p in _CONFIDENTIAL_PATTERNS), \
-        "confidential token survived scrub"
-
-    return AssembledPost(markdown=markdown, slug=slug, leaked=leaked,
-                         leak_evidence=hits)
+    return AssembledPost(markdown=markdown, slug=slug)

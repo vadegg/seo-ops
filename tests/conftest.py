@@ -103,9 +103,8 @@ class FakeRunner:
                     "![Researcher observing a usability test](/img/test.png)\n"),
                 "critique": {"checklist": {
                     "on_brief": True, "style_guide": True, "seo": True,
-                    "internal_links": True, "evidence_grounded": True,
-                    "no_client_leak": True}, "passed": True,
-                    "notes": "clean"}})
+                    "internal_links": True, "evidence_grounded": True},
+                    "passed": True, "notes": "clean"}})
         raise AssertionError(f"unexpected agent {name}")
 
 
@@ -118,9 +117,8 @@ class FailingEditorRunner(FakeRunner):
                 "edited_markdown": "## Body\n\nText.\n",
                 "critique": {"checklist": {
                     "on_brief": True, "style_guide": False, "seo": True,
-                    "internal_links": True, "evidence_grounded": True,
-                    "no_client_leak": True}, "passed": False,
-                    "notes": "style issues"}})
+                    "internal_links": True, "evidence_grounded": True},
+                    "passed": False, "notes": "style issues"}})
         return super()._canned(name=name, model=model)
 
 

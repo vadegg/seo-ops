@@ -250,7 +250,7 @@ def run_selected_steps(cfg, *, run_date: str, step_names: list[str],
         run_steps(ctx, step_names)
         logger.info("=== selected steps complete ===")
         # Same end-of-run telemetry as a full run: an isolated/resume run that
-        # scrubs a leak or forces a final rewrite must still alert, and a real
+        # forces a final rewrite must still alert, and a real
         # `--from publisher` must still send the publish summary (#8).
         _finalize_run(ctx, deps, run_dir, accumulator)
         return 0

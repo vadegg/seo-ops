@@ -296,8 +296,8 @@ def step_editor(ctx: StepContext) -> None:
 
 
 def step_assembler(ctx: StepContext) -> None:
-    """Deterministic build + confidentiality scrub. Persists a meta
-    sidecar (slug/leak) so the Publisher needs nothing else."""
+    """Deterministic build. Persists a meta sidecar (slug) so the
+    Publisher needs nothing else."""
     edited = ctx.store.read_text(A.EDITOR_MD)
     brief = ctx.store.read_json(A.OUTLINER)
     topic = ctx.store.read_json(A.STRATEGIST)
@@ -318,23 +318,7 @@ def step_assembler(ctx: StepContext) -> None:
         internal_link_min_corpus=ctx.cfg.internal_link_min_corpus,
         logger=ctx.logger)
     ctx.store.write_text(A.ASSEMBLER, assembled.markdown)
-    ctx.store.write_json(A.ASSEMBLER_META, {
-        "slug": assembled.slug,
-        "leaked": bool(assembled.leaked),
-        "leak_evidence": assembled.leak_evidence,
-    })
-
-    if getattr(assembled, "leaked", False):
-        escalation_log(
-            ctx.run_dir,
-            f"confidentiality: scrubbed {len(assembled.leak_evidence)} "
-            f"line(s) before publish")
-        # ERROR -> hard digest + run-log summary (#3/#8).
-        if ctx.logger:
-            ctx.logger.error(
-                "confidentiality: scrubbed %d line(s) with confidential "
-                "markers before publish — check evidence handling",
-                len(assembled.leak_evidence))
+    ctx.store.write_json(A.ASSEMBLER_META, {"slug": assembled.slug})
 
 
 def step_publisher(ctx: StepContext) -> None:
@@ -348,13 +332,9 @@ def step_publisher(ctx: StepContext) -> None:
     else:  # fallback for legacy runs without the sidecar
         from pipeline.assembler import _slugify
         meta = {"slug": _slugify(brief.get("slug") or brief.get("title")
-                                 or topic.get("topic", "post")),
-                "leaked": False, "leak_evidence": []}
+                                 or topic.get("topic", "post"))}
 
-    assembled = SimpleNamespace(
-        markdown=post_md, slug=meta["slug"],
-        leaked=meta.get("leaked", False),
-        leak_evidence=meta.get("leak_evidence", []))
+    assembled = SimpleNamespace(markdown=post_md, slug=meta["slug"])
 
     research = (ctx.store.read_json(A.RESEARCHER)
                 if ctx.store.exists(A.RESEARCHER) else {})
@@ -415,7 +395,7 @@ def _publish_report(ctx, brief: dict, topic: dict, status: dict,
 def build_digest(ctx: StepContext, accumulator, usage_report: dict) -> tuple:
     """One consolidated end-of-run message (#8): publish summary +
     degradations (#3) + token/$ usage (#5). Returns (text, level) where
-    level is hard on a leak/forced-final, warn on any degradation, else info.
+    level is hard on a forced-final, warn on any degradation, else info.
     """
     store = ctx.store
     status = store.read_json(A.PUBLISHER) if store.exists(A.PUBLISHER) else {}
@@ -424,14 +404,13 @@ def build_digest(ctx: StepContext, accumulator, usage_report: dict) -> tuple:
     post_md = store.read_text(A.ASSEMBLER) if store.exists(A.ASSEMBLER) else ""
     stage = int(status.get("escalation_stage", ctx.stage))
 
-    leaked = bool(status.get("confidential_leak_scrubbed"))
     critique = (store.read_json(A.EDITOR_CRITIQUE)
                 if store.exists(A.EDITOR_CRITIQUE) else {})
     forced = bool(critique.get("forced_final"))
     degr = list(getattr(accumulator, "degradations", []))
     has_error = any(d["level"] == "ERROR" for d in degr)
 
-    level = "hard" if (leaked or forced or has_error) else (
+    level = "hard" if (forced or has_error) else (
         "warn" if degr else "info")
 
     # An isolated step subset may not have produced a publishable post; only

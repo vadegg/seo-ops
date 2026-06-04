@@ -138,7 +138,6 @@ def publish(*, cfg, assembled, brief: dict, topic: dict, stage: int,
         "file": rel_path,
         "commit": sha,
         "escalation_stage": stage,
-        "confidential_leak_scrubbed": bool(assembled.leaked),
         "timestamp": now,
     }
 

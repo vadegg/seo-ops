@@ -79,8 +79,7 @@ def _run_publish(project, *, dry_run, monkeypatch, blow_up=False):
     # don't actually back off / sleep in tests
     monkeypatch.setattr(publisher, "with_backoff", lambda fn, **kw: fn())
 
-    assembled = SimpleNamespace(markdown="# x\n", slug="foo",
-                                leaked=False, leak_evidence=[])
+    assembled = SimpleNamespace(markdown="# x\n", slug="foo")
 
     class _Git:
         def ensure_clone(self):

@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from pipeline.assembler import (AssemblyError, assemble, scrub_confidential,
+from pipeline.assembler import (AssemblyError, assemble,
                                 _count_internal_links, _toc_block)
 
 # A meta description that normalizes within the blog's 150–160 Zod refine.
@@ -141,16 +141,6 @@ def test_underlinked_post_warns(caplog):
     assert any("internal links" in r.message for r in caplog.records)
 
 
-def test_scrub_removes_confidential_lines():
-    text = ("Normal line.\n"
-            "This paragraph is CONFIDENTIAL — client X data.\n"
-            "Another normal line.\n")
-    clean, hits = scrub_confidential(text)
-    assert "CONFIDENTIAL" not in clean.upper()
-    assert len(hits) == 1
-    assert "Normal line." in clean
-
-
 def test_assemble_frontmatter_and_jsonld():
     post = _assemble(_brief())
     md = post.markdown
@@ -161,7 +151,6 @@ def test_assemble_frontmatter_and_jsonld():
     assert '"@type": "BlogPosting"' in md
     assert "![A researcher](/i.png)" in md
     assert post.slug == "usability-testing-sample-size"
-    assert post.leaked is False
 
 
 def test_frontmatter_has_required_schema_fields():

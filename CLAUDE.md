@@ -35,7 +35,7 @@ A deterministic Python orchestrator drives subagents over the Anthropic Messages
 
 The five LLM agents (Researcher, Strategist, Outliner, Writer, Editor) live in `agents/` and follow the same contract: they receive structured input, emit JSON (or markdown), and know nothing about retries or model choice — that's the orchestrator's job (`pipeline/orchestrator.py`). The Assembler and Publisher are deterministic code in `pipeline/` (`assembler.py`, `publisher.py`), not LLM agents.
 
-**Steps as units** (`pipeline/steps.py`): each of the 7 steps is a `Step(name, inputs, output, fn)` in the `STEPS` registry. A step function reads its inputs from disk (`StepContext.store`) and writes one artifact. `run_steps()` is the generic driver (resume if output exists, `StepInputError` if a required input is missing). Both entry points reuse these functions: `run_pipeline()` (full run, owns the escalation loop for steps 1–2) and `run_selected_steps()` (isolated subset, single pass at `start_stage`, no auto-escalation). Researcher and Strategist share `researcher_pass`/`strategist_pass` between the isolated steps and the escalation loop. The Assembler writes a `06-assembler.meta.json` sidecar (slug/leak) so the Publisher is fully decoupled from it.
+**Steps as units** (`pipeline/steps.py`): each of the 7 steps is a `Step(name, inputs, output, fn)` in the `STEPS` registry. A step function reads its inputs from disk (`StepContext.store`) and writes one artifact. `run_steps()` is the generic driver (resume if output exists, `StepInputError` if a required input is missing). Both entry points reuse these functions: `run_pipeline()` (full run, owns the escalation loop for steps 1–2) and `run_selected_steps()` (isolated subset, single pass at `start_stage`, no auto-escalation). Researcher and Strategist share `researcher_pass`/`strategist_pass` between the isolated steps and the escalation loop. The Assembler writes a `06-assembler.meta.json` sidecar (slug) so the Publisher is fully decoupled from it.
 
 **Isolation point:** `agents/runner.py:SDKAgentRunner` is the only place that touches the `anthropic` SDK (direct Anthropic Messages API). Tests inject a fake runner — no API or network calls in tests.
 
@@ -43,7 +43,7 @@ The five LLM agents (Researcher, Strategist, Outliner, Writer, Editor) live in `
 
 **Resume vs. `--force` (rerun invariant).** Re-running a step is idempotent: if its output artifact is already on disk it is *skipped* (`run_steps`, `pipeline/steps.py`). `--force` re-runs the step and **overwrites** its single artifact via `write_json`/`write_text` — it never appends or accumulates. So re-running the Researcher with `--force` replaces `01-researcher.candidates.json` with one fresh object; it does not grow the candidate list. Growth of the reusable keyword reserve is a *separate* concern owned by the Publisher (`_reconcile_keyword_backlog`, floor+cap). Covered by `test_force_overwrites_researcher_not_appends`.
 
-**Run telemetry** (`logging_setup.RunLogAccumulator`, `pipeline/usage.py`): every run collects WARN/ERROR into a degradation summary (written to `run.log`) and per-agent token/USD usage (written to `runs/<date>/usage.json`). `run_pipeline` sends **one** consolidated Telegram digest at the end (publish summary + degradations + tokens/$); only a fatal crash keeps its own immediate hard alert. Per-event alerts (escalation, forced-final editor, confidentiality scrub) are surfaced as WARN/ERROR log records that feed both the summary and the digest.
+**Run telemetry** (`logging_setup.RunLogAccumulator`, `pipeline/usage.py`): every run collects WARN/ERROR into a degradation summary (written to `run.log`) and per-agent token/USD usage (written to `runs/<date>/usage.json`). `run_pipeline` sends **one** consolidated Telegram digest at the end (publish summary + degradations + tokens/$); only a fatal crash keeps its own immediate hard alert. Per-event alerts (escalation, forced-final editor) are surfaced as WARN/ERROR log records that feed both the summary and the digest.
 
 **Escalation** (`pipeline/escalation.py`): 4-stage ladder. Strategist scores the topic 0..1; below threshold → escalate to next stage (Sonnet → Opus, looser data sources, then evergreen guarantee). Every transition is logged to `runs/<date>/escalation.log`. Stage 4 is API-independent and always succeeds.
 
@@ -80,9 +80,7 @@ Copy `.env.example` → `.env`. `config.py` validates all secrets at startup and
 Two directories hold confidential material. They **are** listed in `.gitignore`, so a plain `git add -A` will not stage them — but never defeat that guard with `git add -f`, and prefer staging files by explicit path. Treat leakage as a correctness property, not just a convenience.
 
 - `secrets/` — live credentials (e.g. the GSC service-account private key JSON pointed to by `GSC_SERVICE_ACCOUNT_JSON`).
-- `evidence/` — the BM25 corpus: client interview transcripts under NDA (Glasgow Research / TripleTen and others). This is the in-repo `EVIDENCE_DIR`.
-
-The pipeline treats leakage of this material as a correctness property: the Editor strips NDA/PII and the Assembler records a `leak` flag in `06-assembler.meta.json`; `tests/test_confidentiality.py` guards it. If you touch the Editor, Assembler, or Evidence client, run that test.
+- `evidence/` — the BM25 corpus: client interview transcripts (Glasgow Research / TripleTen and others). This is the in-repo `EVIDENCE_DIR`. Any NDA/PII must be stripped at the data level before a transcript is added to the corpus — the pipeline no longer scrubs confidential material at publish time.
 
 ## Models
 
