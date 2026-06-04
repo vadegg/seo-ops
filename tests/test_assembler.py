@@ -165,6 +165,17 @@ def test_frontmatter_has_required_schema_fields():
     assert 150 <= len(m.group(1)) <= 160
 
 
+def test_frontmatter_has_updated_date_and_reading_time():
+    """#15: updatedDate (= run_date) and a positive integer readingTime are
+    emitted so the blog can show 'Updated' and a reading-time on every post.
+    Field names must match the blog's content schema."""
+    md = _assemble(_brief()).markdown
+    assert "updatedDate: 2026-05-19" in md
+    rt = re.search(r'^readingTime: (\d+)$', md, re.MULTILINE)
+    assert rt is not None
+    assert int(rt.group(1)) >= 1
+
+
 def test_category_from_brief_overrides_default():
     md = _assemble(_brief(category="Methods")).markdown
     assert 'category: "Methods"' in md

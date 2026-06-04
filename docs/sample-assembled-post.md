@@ -2,6 +2,8 @@
 title: "Best User Research Tools for B2B SaaS Teams"
 description: "A practical, evidence-led guide to choosing user research tools for B2B SaaS teams — start from the decision, not the platform, with a clear selection"
 pubDate: 2026-06-04
+updatedDate: 2026-06-04
+readingTime: 8
 slug: "best-user-research-tools-b2b-saas"
 author: "Vadim Glazkov"
 authorSlug: "vadim"

@@ -288,6 +288,11 @@ def assemble(*, edited_markdown: str, brief: dict, topic: dict,
         f"title: {_yaml_escape(title)}",
         f"description: {_yaml_escape(description)}",
         f"pubDate: {run_date}",
+        # #15: updatedDate (blog template shows "Updated" only when it differs
+        # from pubDate) + reading time on every post. Field names mirror the
+        # blog's content schema (updatedDate, readingTime).
+        f"updatedDate: {run_date}",
+        f"readingTime: {_reading_time(body)}",
         f"slug: {_yaml_escape(slug)}",
         f"author: {_yaml_escape(author_name)}",
         f"authorSlug: {_yaml_escape(author_slug)}",
