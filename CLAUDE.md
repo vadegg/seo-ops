@@ -98,6 +98,7 @@ labels. Full convention: `.github/ISSUE_GUIDELINES.md`.
 
 - host: `clawd@167.235.134.6`        # SSH target (key on laptop)
 - path: `/home/clawd/seo/seo-autoblog`  # project dir on the server
+- blog: `/home/clawd/seo/blog`       # local checkout of the `glasgow-blog` Astro repo (the publish target; edit blog-side issues here or clone `git@github.com:vadegg/glasgow-blog.git`)
 - branch: `main`                     # branch the server tracks
 - rebuild: none (cron picks up new code next run; reinstall deps only if `requirements.txt` changed)
 

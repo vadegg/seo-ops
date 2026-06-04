@@ -95,11 +95,11 @@ class Config:
                             "We receive no compensation for any mention; "
                             "recommendations are based on hands-on use.")
 
-    # Author / org identity for richer JSON-LD (#12). Empty = omitted, never
-    # fabricated. CSV env vars -> tuples of profile URLs (sameAs).
-    author_url: str = ""
-    author_same_as: tuple = ()
-    org_same_as: tuple = ()
+    # Author / org identity for richer JSON-LD (#12). Real, confirmed profile
+    # URLs (never fabricated); CSV env vars override the sameAs tuples.
+    author_url: str = "https://blog.glasgow.works/authors/vadim/"
+    author_same_as: tuple = ("https://www.linkedin.com/in/vadim-glazkov/",)
+    org_same_as: tuple = ("https://www.linkedin.com/company/glasgow-research",)
     default_og_image: str = ""
 
     # Internal-link floor for a sufficiently-built corpus (#13).
@@ -234,9 +234,12 @@ class Config:
                 "Disclosure: this article may mention paid tools. We receive "
                 "no compensation for any mention; recommendations are based "
                 "on hands-on use.").strip(),
-            author_url=os.environ.get("AUTHOR_URL", "").strip(),
-            author_same_as=_csv("AUTHOR_SAME_AS"),
-            org_same_as=_csv("ORG_SAME_AS"),
+            author_url=os.environ.get(
+                "AUTHOR_URL", "https://blog.glasgow.works/authors/vadim/").strip(),
+            author_same_as=_csv("AUTHOR_SAME_AS")
+            or ("https://www.linkedin.com/in/vadim-glazkov/",),
+            org_same_as=_csv("ORG_SAME_AS")
+            or ("https://www.linkedin.com/company/glasgow-research",),
             default_og_image=os.environ.get("DEFAULT_OG_IMAGE", "").strip(),
             blog_llms_path=os.environ.get(
                 "BLOG_LLMS_PATH", "public/llms.txt").strip(),
