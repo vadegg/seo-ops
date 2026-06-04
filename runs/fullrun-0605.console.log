@@ -1,0 +1,64 @@
+2026-06-04T08:44:39+0000 | orchestrator | INFO | === run start date=2026-06-05 dry_run=False ===
+2026-06-04T08:44:39+0000 | orchestrator | INFO | escalation stage 1 [sonnet] :: GSC near-top (pos 5–20) + DataForSEO expansion :: reason: run start
+2026-06-04T08:44:39+0000 | orchestrator | INFO | stage 1 (sonnet) :: GSC near-top (pos 5–20) + DataForSEO expansion
+2026-06-04T08:44:39+0000 | orchestrator | INFO | gsc near-top: 0 queries in band 5-20
+2026-06-04T08:44:40+0000 | researcher | INFO | agent researcher -> model=claude-sonnet-4-6 tools=[]
+2026-06-04T08:45:13+0000 | researcher | INFO | agent researcher produced 7274 chars
+2026-06-04T08:45:14+0000 | strategist | INFO | agent strategist -> model=claude-sonnet-4-6 tools=[]
+2026-06-04T08:45:24+0000 | strategist | INFO | agent strategist produced 1640 chars
+2026-06-04T08:45:24+0000 | orchestrator | INFO | strategist score=0.620 threshold=0.62
+2026-06-04T08:45:24+0000 | outliner | INFO | === step outliner (stage 1) ===
+2026-06-04T08:45:24+0000 | outliner | INFO | agent outliner -> model=claude-sonnet-4-6 tools=[]
+2026-06-04T08:46:13+0000 | outliner | INFO | agent outliner produced 9827 chars
+2026-06-04T08:46:13+0000 | writer | INFO | === step writer (stage 1) ===
+2026-06-04T08:46:13+0000 | orchestrator | INFO | evidence: indexed 5273 passages from 22 files
+2026-06-04T08:46:13+0000 | writer | INFO | evidence: 8 passage(s) retrieved
+2026-06-04T08:46:13+0000 | writer | INFO | agent writer -> model=claude-sonnet-4-6 tools=[]
+2026-06-04T08:47:43+0000 | writer | INFO | agent writer produced 16981 chars
+2026-06-04T08:47:43+0000 | editor | INFO | === step editor (stage 1) ===
+2026-06-04T08:47:43+0000 | editor | INFO | agent editor -> model=claude-sonnet-4-6 tools=[]
+2026-06-04T08:49:31+0000 | editor | INFO | agent editor produced 19093 chars
+2026-06-04T08:49:31+0000 | editor | WARNING | agent editor output rejected (agent did not return parseable JSON) — re-prompting once
+2026-06-04T08:49:31+0000 | editor | INFO | agent editor -> model=claude-sonnet-4-6 tools=[]
+2026-06-04T08:51:14+0000 | editor | INFO | agent editor produced 18640 chars
+2026-06-04T08:51:14+0000 | assembler | INFO | === step assembler (stage 1) ===
+2026-06-04T08:51:14+0000 | orchestrator | ERROR | pipeline failed: confidential token survived scrub
+Traceback (most recent call last):
+  File "/home/clawd/seo/seo-autoblog/pipeline/orchestrator.py", line 181, in run_pipeline
+    run_steps(ctx, ["outliner", "writer", "editor",
+  File "/home/clawd/seo/seo-autoblog/pipeline/steps.py", line 534, in run_steps
+    step.fn(ctx)
+  File "/home/clawd/seo/seo-autoblog/pipeline/steps.py", line 304, in step_assembler
+    assembled = assemble(
+                ^^^^^^^^^
+  File "/home/clawd/seo/seo-autoblog/pipeline/assembler.py", line 350, in assemble
+    assert "CONFIDENTIAL" not in markdown.upper().replace("[REDACTED]", ""), \
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: confidential token survived scrub
+2026-06-04T08:51:14+0000 | orchestrator | INFO | === degradations (2) ===
+• WARNING | editor | agent editor output rejected (agent did not return parseable JSON) — re-prompting once
+‼ ERROR | orchestrator | pipeline failed: confidential token survived scrub
+2026-06-04T09:00:15+0000 | orchestrator | INFO | === run start date=2026-06-05 dry_run=False ===
+2026-06-04T09:00:15+0000 | orchestrator | INFO | escalation stage 1 [sonnet] :: GSC near-top (pos 5–20) + DataForSEO expansion :: reason: run start
+2026-06-04T09:00:15+0000 | orchestrator | INFO | resume: steps 1–2 from artifacts (stage 1)
+2026-06-04T09:00:15+0000 | orchestrator | INFO | skip outliner: 03-outliner.brief.json already present (resume)
+2026-06-04T09:00:15+0000 | orchestrator | INFO | skip writer: 04-writer.draft.md already present (resume)
+2026-06-04T09:00:15+0000 | orchestrator | INFO | skip editor: 05-editor.edited.md already present (resume)
+2026-06-04T09:00:15+0000 | assembler | INFO | === step assembler (stage 1) ===
+2026-06-04T09:00:15+0000 | assembler | ERROR | confidentiality: scrubbed 2 line(s) with confidential markers before publish — check evidence handling
+2026-06-04T09:00:15+0000 | publisher | INFO | === step publisher (stage 1) ===
+2026-06-04T09:00:15+0000 | orchestrator | INFO | git fetch origin main
+2026-06-04T09:00:17+0000 | orchestrator | INFO | git checkout main
+2026-06-04T09:00:17+0000 | orchestrator | INFO | git reset --hard origin/main
+2026-06-04T09:00:17+0000 | orchestrator | INFO | git add src/content/blog/2026-06-05-how-to-recruit-b2b-interview-participants.md
+2026-06-04T09:00:17+0000 | orchestrator | INFO | git add public/llms.txt
+2026-06-04T09:00:17+0000 | orchestrator | INFO | git status --porcelain
+2026-06-04T09:00:17+0000 | orchestrator | INFO | git -c user.name=seo-autoblog -c user.email=bot@seo-autoblog.local commit -m post: How to Recruit B2B Interview Participants
+2026-06-04T09:00:17+0000 | orchestrator | INFO | git rev-parse HEAD
+2026-06-04T09:00:17+0000 | orchestrator | INFO | git push origin main
+2026-06-04T09:00:19+0000 | publisher | INFO | keyword_backlog: +0, pruned 1, kept 15
+2026-06-04T09:00:19+0000 | publisher | INFO | published how-to-recruit-b2b-interview-participants -> https://blog.glasgow.works/blog/how-to-recruit-b2b-interview-participants (commit b8a4ef9a58eb0f7c38a33bcd148fb88fd56da27b)
+2026-06-04T09:00:19+0000 | publisher | INFO | indexnow: submitted https://blog.glasgow.works/blog/how-to-recruit-b2b-interview-participants/
+2026-06-04T09:00:19+0000 | orchestrator | INFO | === run complete status=published ===
+2026-06-04T09:00:19+0000 | orchestrator | INFO | === degradations (1) ===
+‼ ERROR | assembler | confidentiality: scrubbed 2 line(s) with confidential markers before publish — check evidence handling

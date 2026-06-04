@@ -39,7 +39,7 @@ Legend: `[ ]` open · `[x]` covered (≥1 published post)
 
 ## Pillar: Product Research (B2B SaaS)
 > hub: /blog/product-research
-- [ ] jobs-to-be-done interviews (B2B)
+- [x] jobs-to-be-done interviews (B2B)
 - [ ] win-loss analysis for B2B SaaS
 - [ ] recruiting B2B interview participants
 - [ ] pricing research for B2B SaaS
