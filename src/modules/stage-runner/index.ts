@@ -3,6 +3,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { ensureDir, readYamlFile, writeJson, writeText } from '../../lib/files.js';
+import { submitIndexNowUrl } from '../../lib/indexnow.js';
 import { generateText } from '../../lib/llm.js';
 import { createRunLogger } from '../../lib/run-log.js';
 import { loadRunnerConfig, resolveWorkspacePath, type RunnerConfig } from '../../lib/workspace-config.js';
@@ -729,7 +730,7 @@ async function runPublisherStage(context: StageContext): Promise<{ slug: string;
 
   let blogFilePath: string | undefined;
   if (publishToBlog) {
-    blogFilePath = publishArticleToBlog(context, slug, finalArticle);
+    blogFilePath = await publishArticleToBlog(context, slug, finalArticle);
     setStatus(context, {
       approvals: {
         final: 'approved'
@@ -756,7 +757,7 @@ async function runPublisherStage(context: StageContext): Promise<{ slug: string;
   return { slug, blogFilePath };
 }
 
-function publishArticleToBlog(context: StageContext, slug: string, finalArticle: string): string {
+async function publishArticleToBlog(context: StageContext, slug: string, finalArticle: string): Promise<string> {
   const blogContentDir = resolveWorkspacePath(
     context.workspaceRoot,
     context.runnerConfig.publishing?.blog_content_dir ?? context.workflowConfig.paths?.blog_content_dir,
@@ -764,6 +765,7 @@ function publishArticleToBlog(context: StageContext, slug: string, finalArticle:
   );
   ensureDir(blogContentDir);
   const blogFilePath = path.join(blogContentDir, `${slug}.md`);
+  const publicSiteUrl = process.env.INDEXNOW_SITE_URL ?? 'https://blog.glasgow.works';
 
   if (!context.dryRun) {
     writeText(blogFilePath, finalArticle);
@@ -772,6 +774,10 @@ function publishArticleToBlog(context: StageContext, slug: string, finalArticle:
         ? resolveWorkspacePath(context.workspaceRoot, context.runnerConfig.publishing.blog_repo_root, 'blog')
         : findGitRoot(path.dirname(blogFilePath)),
       stdio: 'pipe'
+    });
+    await submitIndexNowUrl({
+      siteUrl: publicSiteUrl,
+      url: new URL(`/blog/${slug}/`, publicSiteUrl).toString()
     });
   }
 
@@ -978,7 +984,7 @@ export async function runStageRunner(currentDir: string, options?: StageRunnerOp
       const frontmatter = readYamlFile<Record<string, any>>(path.join(context.workItemDir, '5-publish', 'frontmatter.yaml'));
       const slug = String(frontmatter.slug ?? '').trim();
       if (slug) {
-        blogFilePath = publishArticleToBlog(
+        blogFilePath = await publishArticleToBlog(
           context,
           slug,
           readText(path.join(context.workItemDir, '5-publish', 'final-article.md'))

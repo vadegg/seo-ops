@@ -1,3 +1,5 @@
+import OpenAI from 'openai';
+
 interface ChatMessage {
   role: 'system' | 'user';
   content: string;
@@ -17,42 +19,25 @@ function getApiKey(): string {
   return apiKey;
 }
 
-function getBaseUrl(): string {
-  return process.env.OPENAI_BASE_URL?.replace(/\/$/, '') ?? 'https://api.openai.com/v1';
+function createClient(): OpenAI {
+  return new OpenAI({
+    apiKey: getApiKey(),
+    baseURL: process.env.OPENAI_BASE_URL?.replace(/\/$/, '')
+  });
 }
 
 export async function generateText(messages: ChatMessage[], options?: GenerateTextOptions): Promise<string> {
-  const apiKey = getApiKey();
+  const client = createClient();
   const model = options?.model ?? process.env.OPENAI_MODEL ?? 'gpt-4.1-mini';
   const temperature = options?.temperature ?? 0.3;
 
-  const response = await fetch(`${getBaseUrl()}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      temperature,
-      messages
-    })
+  const response = await client.responses.create({
+    model,
+    temperature,
+    input: messages
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`LLM request failed with ${response.status}: ${errorText}`);
-  }
-
-  const json = (await response.json()) as {
-    choices?: Array<{
-      message?: {
-        content?: string;
-      };
-    }>;
-  };
-
-  const content = json.choices?.[0]?.message?.content?.trim();
+  const content = response.output_text.trim();
   if (!content) {
     throw new Error('LLM response did not contain any text content.');
   }

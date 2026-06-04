@@ -28,6 +28,14 @@ It is designed to work with:
 - `npm run daily`
 - `npm run stage`
 
+## IndexNow
+
+`seo-ops` can notify IndexNow automatically after a successful publish.
+
+- The repo now includes a default key and matching public verification file at [`blog/public/129ebf08-3db2-4d2f-bf33-9ea41ef4cc90.txt`](/Users/vadegg/playground/seo/blog/public/129ebf08-3db2-4d2f-bf33-9ea41ef4cc90.txt).
+- By default, submissions target `https://blog.glasgow.works` and POST to `https://api.indexnow.org/indexnow`.
+- If you ever rotate the key, update both the public `.txt` file and `INDEXNOW_KEY` in your real `.env` or `.env.local`.
+
 ## Workspace Root
 
 By default, pass a thematic workspace explicitly:
