@@ -106,6 +106,13 @@ class Config:
     internal_link_floor: int = 3
     internal_link_min_corpus: int = 4
 
+    # Uniqueness / near-duplicate guard (#37). Internal MinHash check needs no
+    # external service; the provider/key are reserved for an optional future
+    # external plagiarism API and default to internal-only.
+    uniqueness_threshold: float = 0.55
+    uniqueness_provider: str = "internal"   # "internal" = local MinHash only
+    uniqueness_api_key: str = ""
+
     # Where llms.txt is written in the blog repo (Astro serves public/ at root).
     blog_llms_path: str = "public/llms.txt"
 
@@ -241,6 +248,10 @@ class Config:
             org_same_as=_csv("ORG_SAME_AS")
             or ("https://www.linkedin.com/company/glasgow-research",),
             default_og_image=os.environ.get("DEFAULT_OG_IMAGE", "").strip(),
+            uniqueness_threshold=_float("UNIQUENESS_THRESHOLD", 0.55),
+            uniqueness_provider=os.environ.get(
+                "UNIQUENESS_PROVIDER", "internal").strip() or "internal",
+            uniqueness_api_key=os.environ.get("UNIQUENESS_API_KEY", "").strip(),
             blog_llms_path=os.environ.get(
                 "BLOG_LLMS_PATH", "public/llms.txt").strip(),
             indexnow_key=os.environ.get(

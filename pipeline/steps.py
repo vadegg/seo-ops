@@ -295,6 +295,45 @@ def step_editor(ctx: StepContext) -> None:
     ctx.store.write_json(A.EDITOR_CRITIQUE, critique)
 
 
+def step_uniqueness(ctx: StepContext) -> None:
+    """#37 Deterministic near-duplicate guard between Editor and Assembler.
+
+    Internal MinHash similarity of the edited body against already-published
+    posts (topic_history bodies). Advisory only: above-threshold logs a WARN
+    (which feeds the degradation summary + Telegram digest) but NEVER blocks
+    publication. The score is persisted to 05b for telemetry/resume."""
+    from pipeline import uniqueness as U
+
+    body = ctx.store.read_text(A.EDITOR_MD)
+    corpus = U.published_corpus(ctx.cfg.backlog_dir / "topic_history.json")
+    score, match = U.best_match(body, corpus)
+    threshold = float(getattr(ctx.cfg, "uniqueness_threshold",
+                              U.DEFAULT_THRESHOLD))
+
+    result = {
+        "max_similarity": round(score, 4),
+        "threshold": threshold,
+        "corpus_size": len(corpus),
+        "provider": getattr(ctx.cfg, "uniqueness_provider", "internal"),
+        "above_threshold": score >= threshold,
+        "match_slug": (match or {}).get("slug", "") if match else "",
+    }
+    ctx.store.write_json(A.UNIQUENESS, result)
+
+    if ctx.logger:
+        if score >= threshold:
+            # WARN so the run-log degradation summary + digest surface it;
+            # not an ERROR — a near-duplicate is a review flag, not a failure.
+            ctx.logger.warning(
+                "uniqueness: body is highly similar (%.2f >= %.2f) to "
+                "published post '%s' — review for paraphrase/self-repetition",
+                score, threshold, result["match_slug"] or "(unknown)")
+        else:
+            ctx.logger.info(
+                "uniqueness: max similarity %.2f (< %.2f) over %d published "
+                "post(s) — ok", score, threshold, len(corpus))
+
+
 def step_assembler(ctx: StepContext) -> None:
     """Deterministic build. Persists a meta sidecar (slug) so the
     Publisher needs nothing else."""
@@ -460,6 +499,7 @@ STEPS: list[Step] = [
     Step("outliner", (A.STRATEGIST,), A.OUTLINER, step_outliner),
     Step("writer", (A.OUTLINER,), A.WRITER, step_writer),
     Step("editor", (A.WRITER, A.OUTLINER), A.EDITOR_MD, step_editor),
+    Step("uniqueness", (A.EDITOR_MD,), A.UNIQUENESS, step_uniqueness),
     Step("assembler", (A.EDITOR_MD, A.OUTLINER, A.STRATEGIST), A.ASSEMBLER,
          step_assembler),
     Step("publisher", (A.ASSEMBLER, A.OUTLINER, A.STRATEGIST), A.PUBLISHER,
