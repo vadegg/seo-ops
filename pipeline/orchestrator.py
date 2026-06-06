@@ -178,7 +178,7 @@ def run_pipeline(cfg, *, run_date: str, dry_run: bool = False,
         _research_and_select(ctx, ladder)
         ctx.stage = ladder.stage
 
-        run_steps(ctx, ["outliner", "writer", "editor",
+        run_steps(ctx, ["outliner", "writer", "editor", "humanizer",
                         "assembler", "publisher"])
 
         status = ctx.store.read_json(A.PUBLISHER)

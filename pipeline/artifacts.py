@@ -18,6 +18,7 @@ EVIDENCE = "03b-evidence.json"          # support artifact (Python-gathered)
 WRITER = "04-writer.draft.md"
 EDITOR_MD = "05-editor.edited.md"
 EDITOR_CRITIQUE = "05-editor.critique.json"
+HUMANIZER = "05b-humanizer.md"          # de-AI'd body (#39)
 ASSEMBLER = "06-assembler.post.md"
 ASSEMBLER_META = "06-assembler.meta.json"   # slug info for the Publisher
 PUBLISHER = "07-publisher.status.json"

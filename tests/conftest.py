@@ -105,6 +105,16 @@ class FakeRunner:
                     "on_brief": True, "style_guide": True, "seo": True,
                     "internal_links": True, "evidence_grounded": True},
                     "passed": True, "notes": "clean"}})
+        if name == "humanizer":
+            # The Humanizer emits Markdown (not JSON), like the Writer.
+            # Keep the internal link intact so link-preservation holds.
+            return (
+                "## The 5-user rule, in context\n\n"
+                "The five-user figure is a heuristic, not a law. We see it "
+                "earn its keep on tight, task-focused rounds. For the wider "
+                "picture, our [research methods](/blog/ux-research-methods) "
+                "hub walks through when it breaks.\n\n"
+                "![Researcher observing a usability test](/img/test.png)\n")
         raise AssertionError(f"unexpected agent {name}")
 
 

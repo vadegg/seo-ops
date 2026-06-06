@@ -41,3 +41,25 @@ to practitioner.
 - Title ≤ 60 chars, includes the primary keyword naturally.
 - Meta description 140–160 chars, benefit-led.
 - Sentence case headings. Markdown. No H1 in body (frontmatter owns it).
+
+## AI clichés to avoid (Humanizer, #39)
+LLM prose leans on template connectives, canned openers/closers, and
+impersonal filler. The Humanizer step (`agents/humanizer.py`) strips these
+deterministically and rewrites for varied rhythm + first-person voice. The
+authoritative list lives in `agents/humanizer.py:AI_CLICHES` — this section
+mirrors it for human readers. Never open a sentence with:
+
+- **Canned openers:** "In today's fast-paced world", "In today's digital
+  age", "In the modern world", "In an ever-evolving landscape", "In the
+  world of", "When it comes to", "At the end of the day".
+- **Template connectives:** "Moreover", "Furthermore", "Additionally", "In
+  addition", "However, it is worth noting that", "That being said",
+  "Needless to say", "Last but not least".
+- **Impersonal filler / hedged authority:** "It's important to note that",
+  "It's worth noting that", "It should be noted that", "It is crucial to
+  understand that", "One must consider that".
+- **Canned closers:** "In conclusion", "In summary", "To sum up", "All in
+  all", "Ultimately".
+- **Filler intensifiers:** "In essence", "Simply put".
+
+Earn the transition instead, or just start the sentence.

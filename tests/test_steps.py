@@ -58,11 +58,13 @@ def test_from_step_resumes_to_publisher(project, deps_factory):
     deps = deps_factory()
     rc = run_selected_steps(
         project, run_date="2026-05-19",
-        step_names=["outliner", "writer", "editor", "assembler", "publisher"],
+        step_names=["outliner", "writer", "editor", "humanizer",
+                    "assembler", "publisher"],
         dry_run=True, deps=deps)
     assert rc == 0
     s = _store(project)
-    for name in (A.OUTLINER, A.WRITER, A.EDITOR_MD, A.ASSEMBLER, A.PUBLISHER):
+    for name in (A.OUTLINER, A.WRITER, A.EDITOR_MD, A.HUMANIZER,
+                 A.ASSEMBLER, A.PUBLISHER):
         assert s.exists(name), f"missing {name}"
     # 1–2 were not re-run
     assert "researcher" not in deps.agent_runner.calls
