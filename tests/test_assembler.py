@@ -72,14 +72,16 @@ def test_disclosure_only_when_flagged_or_tools_title():
     assert "<!-- gr:disclosure -->" in tools.markdown
 
 
-def test_toc_and_reading_time_only_for_long_posts():
+def test_toc_only_for_long_posts():
     short = _assemble_full(_brief())
     assert "<!-- gr:toc -->" not in short.markdown
     long_body = ("## First section\n\n" + ("word " * 700) +
                  "\n\n## Second section\n\n" + ("word " * 700) + "\n")
     long_post = _assemble_full(_brief(), body=long_body)
     assert "<!-- gr:toc -->" in long_post.markdown
-    assert "min read" in long_post.markdown
+    # #33: reading time lives only in frontmatter (template renders it once);
+    # never duplicated as an in-body line.
+    assert "min read" not in long_post.markdown
     assert "[First section](#first-section)" in long_post.markdown
     assert "[Second section](#second-section)" in long_post.markdown
 

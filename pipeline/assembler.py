@@ -116,8 +116,7 @@ def _toc_block(body: str) -> str:
         else:
             seen[base] = 0
             anchors.append(base)
-    lines = [_TOC_MARKER, f"*Reading time: {_reading_time(body)} min read*",
-             "", "## On this page", ""]
+    lines = [_TOC_MARKER, "", "## On this page", ""]
     lines += [f"- [{h}](#{a})" for h, a in zip(headings, anchors)]
     return "\n".join(lines) + "\n"
 

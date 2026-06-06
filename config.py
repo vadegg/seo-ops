@@ -88,7 +88,7 @@ class Config:
     # Conversion footer (#11) — appended to every post body.
     cta_text: str = ("Glasgow Research helps B2B SaaS teams turn customer "
                      "and market research into product decisions.")
-    cta_url: str = "https://glasgow.works"
+    cta_url: str = "https://blog.glasgow.works/services/"
 
     # FTC paid-tool disclosure (#16).
     tool_disclosure: str = ("Disclosure: this article may mention paid tools. "
