@@ -233,6 +233,54 @@
       "url": "https://blog.glasgow.works/blog/how-to-recruit-b2b-interview-participants",
       "date": "2026-06-01",
       "escalation_stage": 1
+    },
+    {
+      "topic": "Pricing Research for B2B SaaS: How to Find Out What to Charge",
+      "keyword": "pricing research B2B SaaS",
+      "slug": "pricing-research-b2b-saas",
+      "url": "https://blog.glasgow.works/blog/pricing-research-b2b-saas",
+      "date": "2026-06-06",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "UX Research Methods: How to Choose the Right One",
+      "keyword": "ux research methods",
+      "slug": "ux-research-methods",
+      "url": "https://blog.glasgow.works/blog/ux-research-methods",
+      "date": "2026-05-15",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Research Operations: How to Build ResearchOps That Scales",
+      "keyword": "research operations",
+      "slug": "research-operations",
+      "url": "https://blog.glasgow.works/blog/research-operations",
+      "date": "2026-05-16",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Insight to Impact: Turning Research Into Decisions",
+      "keyword": "insight to impact",
+      "slug": "insight-to-impact",
+      "url": "https://blog.glasgow.works/blog/insight-to-impact",
+      "date": "2026-05-17",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Product Discovery: A Continuous, Evidence-Led Process",
+      "keyword": "product discovery",
+      "slug": "product-discovery",
+      "url": "https://blog.glasgow.works/blog/product-discovery",
+      "date": "2026-05-18",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Jobs-to-Be-Done Interviews for B2B SaaS: The Complete Guide",
+      "keyword": "jobs-to-be-done interviews",
+      "slug": "jtbd-interviews-b2b-saas",
+      "url": "https://blog.glasgow.works/blog/jtbd-interviews-b2b-saas",
+      "date": "2026-05-19",
+      "escalation_stage": 1
     }
   ]
 }

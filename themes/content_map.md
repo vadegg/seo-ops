@@ -13,13 +13,13 @@ Legend: `[ ]` open · `[x]` covered (≥1 published post)
 - [ ] surveys & questionnaire design
 - [x] card sorting & tree testing
 - [ ] diary & longitudinal studies
-- [ ] analytics-informed qualitative research
+- [x] analytics-informed qualitative research
 
 ## Pillar: Research Operations
 > hub: /blog/research-operations
-- [ ] research repositories
+- [x] research repositories
 - [x] participant recruitment & panels
-- [ ] research democratisation & quality guardrails
+- [x] research democratisation & quality guardrails
 - [ ] research cadence & rituals
 - [ ] tooling & templates
 
@@ -27,13 +27,13 @@ Legend: `[ ]` open · `[x]` covered (≥1 published post)
 > hub: /blog/insight-to-impact
 - [x] synthesis & analysis workflows
 - [ ] communicating findings to stakeholders
-- [ ] measuring research ROI & impact
+- [x] measuring research ROI & impact
 - [ ] opportunity prioritisation
 
 ## Pillar: Product Discovery
 > hub: /blog/product-discovery
-- [ ] continuous discovery
-- [ ] jobs-to-be-done
+- [x] continuous discovery
+- [x] jobs-to-be-done
 - [ ] assumption & opportunity mapping
 - [ ] experiment design
 

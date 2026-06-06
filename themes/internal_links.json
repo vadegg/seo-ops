@@ -50,6 +50,48 @@
       "slug": "how-to-recruit-b2b-interview-participants",
       "title": "How to Recruit B2B Interview Participants",
       "date": "2026-06-01"
+    },
+    {
+      "cluster": "Product Research (B2B SaaS)",
+      "url": "https://blog.glasgow.works/blog/pricing-research-b2b-saas",
+      "slug": "pricing-research-b2b-saas",
+      "title": "Pricing Research for B2B SaaS: What to Charge",
+      "date": "2026-06-06"
+    },
+    {
+      "cluster": "UX Research Methods (pillar hub)",
+      "url": "https://blog.glasgow.works/blog/ux-research-methods",
+      "slug": "ux-research-methods",
+      "title": "UX Research Methods: How to Choose the Right One",
+      "date": "2026-05-15"
+    },
+    {
+      "cluster": "Research Operations (pillar hub)",
+      "url": "https://blog.glasgow.works/blog/research-operations",
+      "slug": "research-operations",
+      "title": "Research Operations: How to Build ResearchOps That Scales",
+      "date": "2026-05-16"
+    },
+    {
+      "cluster": "Insight to Impact (pillar hub)",
+      "url": "https://blog.glasgow.works/blog/insight-to-impact",
+      "slug": "insight-to-impact",
+      "title": "Insight to Impact: Turning Research Into Decisions",
+      "date": "2026-05-17"
+    },
+    {
+      "cluster": "Product Discovery (pillar hub)",
+      "url": "https://blog.glasgow.works/blog/product-discovery",
+      "slug": "product-discovery",
+      "title": "Product Discovery: A Continuous, Evidence-Led Process",
+      "date": "2026-05-18"
+    },
+    {
+      "cluster": "Jobs-to-Be-Done interviews (B2B SaaS)",
+      "url": "https://blog.glasgow.works/blog/jtbd-interviews-b2b-saas",
+      "slug": "jtbd-interviews-b2b-saas",
+      "title": "Jobs-to-Be-Done Interviews for B2B SaaS: Complete Guide",
+      "date": "2026-05-19"
     }
   ]
 }

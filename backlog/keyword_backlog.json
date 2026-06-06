@@ -1,66 +1,61 @@
 {
   "schema": "keyword_backlog/v1",
-  "updated": "2026-06-05",
+  "updated": "2026-05-19",
   "note": "Scored unused candidates (score 0..1 + date). Researcher reads here first (cheap reserve before paid APIs). After each publish the Publisher folds in the day's non-selected candidates + surplus, then prunes: drops already-published and below-floor entries, keeps the top-N by score.",
   "candidates": [
     {
+      "keyword": "switch interview technique",
+      "score": 0.72,
+      "date": "2026-06-04"
+    },
+    {
       "keyword": "ux research methods comparison",
-      "score": 0.65,
+      "score": 0.7,
       "date": "2026-05-30"
     },
     {
-      "keyword": "switch interview technique",
-      "score": 0.63,
-      "date": "2026-06-04"
-    },
-    {
       "keyword": "usability testing vs user interviews",
-      "score": 0.62,
+      "score": 0.67,
       "date": "2026-06-03"
-    },
-    {
-      "keyword": "pricing research B2B SaaS",
-      "score": 0.6,
-      "date": "2026-06-04"
     },
     {
       "keyword": "thematic analysis qualitative research",
-      "score": 0.59,
-      "date": "2026-06-03"
-    },
-    {
-      "keyword": "remote usability testing best practices",
-      "score": 0.56,
+      "score": 0.64,
       "date": "2026-06-03"
     },
     {
       "keyword": "churn research for SaaS",
-      "score": 0.55,
+      "score": 0.62,
       "date": "2026-06-04"
     },
     {
+      "keyword": "remote usability testing best practices",
+      "score": 0.6,
+      "date": "2026-06-03"
+    },
+    {
       "keyword": "when to use qualitative vs quantitative research",
+      "score": 0.57,
+      "date": "2026-06-03"
+    },
+    {
+      "keyword": "how to analyze user interview data",
+      "score": 0.55,
+      "date": "2026-06-03"
+    },
+    {
+      "keyword": "research ops for small teams",
       "score": 0.54,
+      "date": "2026-06-04"
+    },
+    {
+      "keyword": "jobs to be done framework ux",
+      "score": 0.51,
       "date": "2026-06-03"
     },
     {
       "keyword": "user research plan template",
       "score": 0.5,
-      "date": "2026-06-03"
-    },
-    {
-      "keyword": "research ops for small teams",
-      "score": 0.5,
-      "date": "2026-06-04"
-    },
-    {
-      "keyword": "how to analyze user interview data",
-      "score": 0.49,
-      "date": "2026-06-03"
-    },
-    {
-      "keyword": "jobs to be done framework ux",
-      "score": 0.48,
       "date": "2026-06-03"
     },
     {
