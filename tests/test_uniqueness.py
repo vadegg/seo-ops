@@ -149,7 +149,7 @@ def test_novel_post_does_not_warn(project, deps_factory):
 
 
 def test_step_never_blocks_pipeline(project, deps_factory):
-    # Even an exact duplicate still lets assembler+publisher run.
+    # Even an exact duplicate still lets humanizer+assembler+publisher run.
     th_path = project.backlog_dir / "topic_history.json"
     th_path.write_text(json.dumps({"published": [
         {"slug": "switching-costs", "topic": "x", "body": NOVEL}]}),
@@ -158,7 +158,7 @@ def test_step_never_blocks_pipeline(project, deps_factory):
     deps = deps_factory()
     rc = run_selected_steps(
         project, run_date="2026-05-19",
-        step_names=["uniqueness", "assembler", "publisher"],
+        step_names=["uniqueness", "humanizer", "assembler", "publisher"],
         dry_run=True, deps=deps)
     assert rc == 0
     store = ArtifactStore(project.runs_dir / "2026-05-19")

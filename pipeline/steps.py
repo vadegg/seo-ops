@@ -29,7 +29,7 @@ from pipeline.assembler import assemble
 from pipeline.escalation import STAGES
 from pipeline.publisher import publish
 
-from agents import editor, outliner, researcher, strategist, writer
+from agents import editor, humanizer, outliner, researcher, strategist, writer
 
 
 # --------------------------------------------------------------------------
@@ -334,10 +334,27 @@ def step_uniqueness(ctx: StepContext) -> None:
                 "post(s) — ok", score, threshold, len(corpus))
 
 
+def step_humanizer(ctx: StepContext) -> None:
+    """De-AI the edited body (#39): deterministic cliché strip + an LLM
+    rewrite anchored to the style guide. NON-BLOCKING — the agent returns
+    the input (deterministically cleaned) on any LLM failure, so this step
+    always writes a publishable body and never abandons the day. Runs the
+    LLM rewrite on Opus (the forced-final tier) for the best voice."""
+    edited = ctx.store.read_text(A.EDITOR_MD)
+    brief = ctx.store.read_json(A.OUTLINER)
+    evidence = ensure_evidence(ctx, brief)
+    body = humanizer.run(
+        ctx.deps.agent_runner, model=ctx.cfg.model_opus, tools=[],
+        max_tokens=ctx.cfg.agent_max_tokens, logger=ctx.logger,
+        draft_md=edited, style_guide=ctx.stores["style_guide"],
+        evidence_passages=evidence)
+    ctx.store.write_text(A.HUMANIZER, body)
+
+
 def step_assembler(ctx: StepContext) -> None:
     """Deterministic build. Persists a meta sidecar (slug) so the
     Publisher needs nothing else."""
-    edited = ctx.store.read_text(A.EDITOR_MD)
+    edited = ctx.store.read_text(A.HUMANIZER)
     brief = ctx.store.read_json(A.OUTLINER)
     topic = ctx.store.read_json(A.STRATEGIST)
     assembled = assemble(
@@ -500,7 +517,8 @@ STEPS: list[Step] = [
     Step("writer", (A.OUTLINER,), A.WRITER, step_writer),
     Step("editor", (A.WRITER, A.OUTLINER), A.EDITOR_MD, step_editor),
     Step("uniqueness", (A.EDITOR_MD,), A.UNIQUENESS, step_uniqueness),
-    Step("assembler", (A.EDITOR_MD, A.OUTLINER, A.STRATEGIST), A.ASSEMBLER,
+    Step("humanizer", (A.EDITOR_MD, A.OUTLINER), A.HUMANIZER, step_humanizer),
+    Step("assembler", (A.HUMANIZER, A.OUTLINER, A.STRATEGIST), A.ASSEMBLER,
          step_assembler),
     Step("publisher", (A.ASSEMBLER, A.OUTLINER, A.STRATEGIST), A.PUBLISHER,
          step_publisher),

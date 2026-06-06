@@ -179,7 +179,7 @@ def run_pipeline(cfg, *, run_date: str, dry_run: bool = False,
         ctx.stage = ladder.stage
 
         run_steps(ctx, ["outliner", "writer", "editor", "uniqueness",
-                        "assembler", "publisher"])
+                        "humanizer", "assembler", "publisher"])
 
         status = ctx.store.read_json(A.PUBLISHER)
         logger.info("=== run complete status=%s ===", status["status"])
