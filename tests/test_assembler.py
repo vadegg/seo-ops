@@ -189,6 +189,22 @@ def test_description_too_short_raises():
         _assemble(_brief(meta_description="too short"))
 
 
+def test_description_near_miss_short_is_padded_into_window():
+    # LLMs also undershoot; a description a few chars below the 150 floor is
+    # padded with a neutral, truthful brand tail rather than aborting the run
+    # (the real 2026-07-13 failure: 144 chars).
+    near = ("Learn how to plan, run, and report a heuristic evaluation in "
+            "real product teams — including when it beats usability testing "
+            "and when it doesn't.")
+    assert 140 <= len(near) < 150
+    md = _assemble(_brief(meta_description=near)).markdown
+    m = re.search(r'^description: "(.*)"$', md, re.MULTILINE)
+    assert m is not None
+    assert 150 <= len(m.group(1)) <= 160
+    # the original description is preserved, only extended
+    assert m.group(1).startswith("Learn how to plan, run, and report")
+
+
 def test_description_too_long_is_clamped_into_window():
     # LLMs reliably overshoot; an over-long description is trimmed to the
     # 150-160 window at a word boundary rather than aborting the run.
