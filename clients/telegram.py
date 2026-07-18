@@ -1,13 +1,16 @@
-"""Telegram Bot API alert channel."""
+"""Telegram Bot API — last-resort fatal-crash alert channel.
+
+Normal run results ship to the ark-agent-fleet journal, not here. This
+channel is used only when the pipeline crashes outright: if the ark/VPS
+itself is down the fleet report may not deliver, so a fatal crash still
+pings Telegram as an out-of-band safety net.
+"""
 
 from __future__ import annotations
-
-from pathlib import Path
 
 from .retry import with_backoff
 
 _SEND = "https://api.telegram.org/bot{token}/sendMessage"
-_DOC = "https://api.telegram.org/bot{token}/sendDocument"
 _EMOJI = {"info": "✅", "warn": "⚠️", "hard": "🚨"}
 
 
@@ -39,32 +42,3 @@ class TelegramClient:
         except Exception as exc:  # noqa: BLE001
             if self._log:
                 self._log.error("telegram alert dropped: %s | text=%s", exc, text)
-
-    def send_document(self, file_path, *, caption: str = "",
-                      level: str = "hard") -> None:
-        """Attach a file (e.g. the run log). Never raises."""
-        path = Path(file_path)
-        cap = f"{_EMOJI.get(level, 'ℹ️')} {caption}".strip()[:1024]
-
-        def _post():
-            import requests
-
-            with path.open("rb") as fh:
-                r = requests.post(
-                    _DOC.format(token=self._token),
-                    data={"chat_id": self._chat_id, "caption": cap},
-                    files={"document": (path.name, fh)},
-                    timeout=30,
-                )
-            r.raise_for_status()
-            return r
-
-        try:
-            if not path.is_file():
-                raise FileNotFoundError(path)
-            with_backoff(_post, attempts=2, logger=self._log,
-                         label="telegram-doc")
-        except Exception as exc:  # noqa: BLE001
-            if self._log:
-                self._log.error("telegram document dropped: %s | file=%s",
-                                exc, file_path)

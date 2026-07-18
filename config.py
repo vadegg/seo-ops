@@ -116,6 +116,16 @@ class Config:
     # Where llms.txt is written in the blog repo (Astro serves public/ at root).
     blog_llms_path: str = "public/llms.txt"
 
+    # Ark fleet reporting (ark-agent-fleet). The run's outcome ships to the
+    # shared fleet journal via the node CLI instead of a personal Telegram
+    # digest. Optional/fail-soft: empty ark_repo disables submission (the run
+    # still completes and writes runs/<date>/report.json locally).
+    ark_repo: str = ""
+    ark_zoo: str = "zoo"          # location in the fleet; paths.ts default is
+    ark_no_sync: bool = False     # "homestead" so this MUST be "zoo" on the VPS
+    node_bin: str = "node"        # node v22+ for publish-cli.ts (abs path in cron)
+    ark_animal: str = "nightingale-seo-autoblog"
+
     # Per-million-token USD prices for cost accounting (#5):
     # (model_id, input_price_per_mtok, output_price_per_mtok).
     model_prices: tuple = (
@@ -254,6 +264,13 @@ class Config:
             uniqueness_api_key=os.environ.get("UNIQUENESS_API_KEY", "").strip(),
             blog_llms_path=os.environ.get(
                 "BLOG_LLMS_PATH", "public/llms.txt").strip(),
+            ark_repo=os.environ.get("ARK_REPO", "").strip(),
+            ark_zoo=os.environ.get("ARK_ZOO", "zoo").strip() or "zoo",
+            ark_no_sync=os.environ.get("ARK_NO_SYNC", "").strip() == "1",
+            node_bin=os.environ.get("NODE_BIN", "").strip() or "node",
+            ark_animal=os.environ.get(
+                "ARK_ANIMAL", "nightingale-seo-autoblog").strip()
+            or "nightingale-seo-autoblog",
             indexnow_key=os.environ.get(
                 "INDEXNOW_KEY",
                 "129ebf08-3db2-4d2f-bf33-9ea41ef4cc90").strip(),

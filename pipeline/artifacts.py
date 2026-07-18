@@ -23,6 +23,7 @@ HUMANIZER = "05c-humanizer.md"          # de-AI'd body (#39); assembler input
 ASSEMBLER = "06-assembler.post.md"
 ASSEMBLER_META = "06-assembler.meta.json"   # slug info for the Publisher
 PUBLISHER = "07-publisher.status.json"
+RUN_REPORT = "report.json"              # whole-run summary (also sent to fleet)
 
 
 class ArtifactStore:

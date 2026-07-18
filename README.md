@@ -39,11 +39,12 @@ today makes a re-run a **no-op** (idempotent).
 | 4 | Evergreen seed list minus topic_history (guarantee) | Opus |
 
 Strategist scores the topic 0..1; below `SCORE_THRESHOLD` → next stage,
-with a Telegram "degraded to level N" alert. Stage 4 is API-independent
-and always yields a publishable topic. A dead API retries with backoff,
-then falls through to a stage that does not need it. Editor failing the
-checklist twice → forced final Opus rewrite + hard alert (never abandon).
-Every transition is in `runs/<date>/escalation.log`.
+logged as a "degraded to level N" WARN (surfaced in the run report). Stage
+4 is API-independent and always yields a publishable topic. A dead API
+retries with backoff, then falls through to a stage that does not need it.
+Editor failing the checklist twice → forced final Opus rewrite, flagged as
+an ERROR in the report (never abandon). Every transition is in
+`runs/<date>/escalation.log`.
 
 ## Persistent stores
 
@@ -100,14 +101,16 @@ degraded days. `MAX_STAGE` / `AGENT_MAX_TOKENS` cap it via config.
 
 ## Tests
 
-`pytest` (40 tests, no network/SDK — all clients & the agent runner are
+`pytest` (no network/SDK — all clients & the agent runner are
 dependency-injected and faked):
 
 - config validation (all missing secrets reported at once)
 - artifact resume + idempotency
-- escalation to the stage-4 guarantee + Telegram alerts
+- escalation to the stage-4 guarantee + run-report degradations
 - API-unavailable fall-through to an independent stage
-- editor forced-final Opus + hard alert
+- editor forced-final Opus (flagged as an ERROR in the report)
+- fleet reporting: run report built + submitted (fail-soft), crash → `fail`,
+  no-op → `skipped`, `--steps` → internal `report.json` only
 - confidentiality scrub (CONFIDENTIAL/NDA never reach the post)
 - assembler frontmatter / JSON-LD / image alts
 - evidence BM25 ranking, retry/backoff
