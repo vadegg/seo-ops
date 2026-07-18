@@ -2,7 +2,7 @@ import pytest
 
 from config import Config, ConfigError
 
-_REQUIRED = ["ANTHROPIC_API_KEY", "GSC_SERVICE_ACCOUNT_JSON", "GSC_SITE_URL",
+_REQUIRED = ["GSC_SERVICE_ACCOUNT_JSON", "GSC_SITE_URL",
              "DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD", "TELEGRAM_BOT_TOKEN",
              "TELEGRAM_CHAT_ID", "BLOG_REPO_URL", "GIT_DEPLOY_KEY",
              "EVIDENCE_DIR"]
@@ -24,7 +24,7 @@ def test_valid_config_loads(monkeypatch, tmp_path):
     key = tmp_path / "k"
     key.write_text("x")
     env = {
-        "ANTHROPIC_API_KEY": "a", "GSC_SERVICE_ACCOUNT_JSON": str(key),
+        "GSC_SERVICE_ACCOUNT_JSON": str(key),
         "GSC_SITE_URL": "sc-domain:x", "DATAFORSEO_LOGIN": "l",
         "DATAFORSEO_PASSWORD": "p", "TELEGRAM_BOT_TOKEN": "t",
         "TELEGRAM_CHAT_ID": "c", "BLOG_REPO_URL": "g", "GIT_DEPLOY_KEY": str(key),

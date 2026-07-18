@@ -29,7 +29,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 ## Architecture
 
-A deterministic Python orchestrator drives subagents over the Anthropic Messages API (`anthropic` library); artifacts live on disk between steps so any step can be resumed.
+A deterministic Python orchestrator drives subagents by shelling out to the `claude` CLI (Claude Code, headless `-p` mode); artifacts live on disk between steps so any step can be resumed.
 
 **Pipeline (9 steps):** `Researcher → Strategist → Outliner → Writer → Editor → Uniqueness → Humanizer → Assembler → Publisher`. Evidence is **not** a step — it's an on-demand BM25 support artifact (`03b-evidence.json`) gathered in Python by `ensure_evidence()` and fed into the Writer, Editor, and Humanizer steps. The **Uniqueness** step (`pipeline/uniqueness.py`, #37) is deterministic, not an LLM agent: it MinHash-scores the edited body (`05-editor.edited.md`) against already-published posts (`backlog/topic_history.json`) and writes the score to `05b-uniqueness.json`. It is **advisory** — above `config.uniqueness_threshold` it logs a WARN (feeding the degradation summary + fleet run report) but NEVER blocks publication. The **Humanizer** (`agents/humanizer.py`, #39) then de-AIs the edited body: a deterministic cliché strip (`AI_CLICHES`, mirrored in `style_guide.md`) plus an Opus LLM rewrite for varied rhythm + first-person voice. It is non-blocking — a model failure passes the edited draft through unchanged, an empty reply falls back to the deterministic strip; it never raises. It writes `05c-humanizer.md`, which the Assembler consumes (instead of `05-editor.edited.md`). Uniqueness reads the editor body (pre-humanizer), so it flags self-repetition before cosmetic rewriting can mask it.
 
@@ -37,7 +37,7 @@ The six LLM agents (Researcher, Strategist, Outliner, Writer, Editor, Humanizer)
 
 **Steps as units** (`pipeline/steps.py`): each of the 9 steps is a `Step(name, inputs, output, fn)` in the `STEPS` registry. A step function reads its inputs from disk (`StepContext.store`) and writes one artifact. `run_steps()` is the generic driver (resume if output exists, `StepInputError` if a required input is missing). Both entry points reuse these functions: `run_pipeline()` (full run, owns the escalation loop for steps 1–2) and `run_selected_steps()` (isolated subset, single pass at `start_stage`, no auto-escalation). Researcher and Strategist share `researcher_pass`/`strategist_pass` between the isolated steps and the escalation loop. The Assembler writes a `06-assembler.meta.json` sidecar (slug) so the Publisher is fully decoupled from it.
 
-**Isolation point:** `agents/runner.py:SDKAgentRunner` is the only place that touches the `anthropic` SDK (direct Anthropic Messages API). Tests inject a fake runner — no API or network calls in tests.
+**Isolation point:** `agents/runner.py:CLIAgentRunner` is the only place that knows the LLM backend. Each `run()` is a stateless `claude -p` subprocess authenticated by the CLI's own **subscription** login (Claude Max/Team) — **no API key**: `--system-prompt` fully replaces Claude Code's default prompt (bare-agent mode), `--safe-mode` disables CLAUDE.md/hooks/plugins/MCP for reproducible calls while keeping normal (subscription) auth, and `ANTHROPIC_API_KEY` is stripped from the child env so a stray key can't silently switch the run to API billing. `--output-format json` gives `result` (the agent text) plus a per-model `modelUsage` block (tokens + `costUSD`, folded into `self.records`; on a subscription `costUSD` is a notional estimate, not a bill). The `"WebSearch"` tool name maps to the CLI's built-in `WebSearch`. Tests inject a fake runner — no subprocess, API, or network calls in tests.
 
 **Artifacts** (`pipeline/artifacts.py`): Each step writes a numbered file to `runs/<YYYY-MM-DD>/` (e.g. `01-researcher.candidates.json`). A step whose output artifact already exists is skipped (resume). A completed `07-publisher.status.json` with `status=published` makes the whole run a no-op.
 
@@ -71,7 +71,9 @@ One-off / manual repair scripts, run by hand (no argparse — positional args vi
 
 ## Configuration
 
-Copy `.env.example` → `.env`. `config.py` validates all secrets at startup and fails with a list of every missing variable before any agent runs. Required vars: `ANTHROPIC_API_KEY`, `GSC_SERVICE_ACCOUNT_JSON`, `GSC_SITE_URL`, `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `BLOG_REPO_URL`, `GIT_DEPLOY_KEY`, `EVIDENCE_DIR`.
+Copy `.env.example` → `.env`. `config.py` validates all secrets at startup and fails with a list of every missing variable before any agent runs. Required vars: `GSC_SERVICE_ACCOUNT_JSON`, `GSC_SITE_URL`, `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `BLOG_REPO_URL`, `GIT_DEPLOY_KEY`, `EVIDENCE_DIR`. **No `ANTHROPIC_API_KEY`** — the `claude` CLI authenticates via its own logged-in subscription session; the runner even strips the key from the child env to force subscription billing.
+
+Optional (defaulted) CLI vars: `CLAUDE_BIN` (path to the `claude` binary, default `claude`; set an absolute path for cron's trimmed `PATH`, cf. `NODE_BIN`), `CLAUDE_TIMEOUT` (per-call subprocess timeout in seconds, default `600`).
 
 Fleet reporting is configured by **optional** (fail-soft) vars — an unset/broken ark disables submission but never blocks a publish: `ARK_REPO` (path to the `ark-agent-fleet` checkout; empty disables fleet submission, the report is still written to `runs/<date>/report.json`), `ARK_ZOO` (default `zoo` — must be `zoo` on the VPS or the report misfiles under `homestead`), `ARK_NO_SYNC` (=`1` writes the report locally in the fleet repo but skips commit/push), `NODE_BIN` (absolute path to node v22+ for `publish-cli.ts`; cron has a trimmed `PATH`), `ARK_ANIMAL` (default `nightingale-seo-autoblog`). The fleet needs `npm install` in `$ARK_REPO/ark/river-report-flow`.
 
@@ -86,7 +88,7 @@ Two directories hold confidential material. They **are** listed in `.gitignore`,
 
 ## Models
 
-Default: `claude-sonnet-4-6` (stages 1–2), `claude-opus-4-7` (stages 3–4 and forced-final editor rewrite). Overridable via `MODEL_SONNET` / `MODEL_OPUS` env vars or `--max-stage` CLI flag.
+Default: `claude-sonnet-5` (stages 1–2), `claude-opus-4-8` (stages 3–4 and forced-final editor rewrite). Passed to `claude --model`; full ids or aliases (`sonnet`/`opus`) both work. Overridable via `MODEL_SONNET` / `MODEL_OPUS` env vars or `--max-stage` CLI flag. Cost/token accounting comes from the CLI's per-call `costUSD` (cache-aware); `config.model_prices` is only a fallback for records without a `usd` field.
 
 ## GitHub Issues
 
@@ -103,6 +105,7 @@ labels. Full convention: `.github/ISSUE_GUIDELINES.md`.
 - blog: `/home/clawd/seo/blog`       # local checkout of the `glasgow-blog` Astro repo (the publish target; edit blog-side issues here or clone `git@github.com:vadegg/glasgow-blog.git`)
 - branch: `main`                     # branch the server tracks
 - rebuild: none (cron picks up new code next run; reinstall deps only if `requirements.txt` changed)
+- prereq: the `claude` CLI (Claude Code) must be installed on the host and reachable — set `CLAUDE_BIN` to its absolute path in `.env` (cron has a trimmed `PATH`, cf. `NODE_BIN`). The CLI must be **logged in on a subscription** (Claude Max/Team) so headless `-p` runs authenticate without an API key — the VPS is already logged in; if the OAuth session ever lapses, re-auth with `claude` (or mint a long-lived token via `claude setup-token`). No `ANTHROPIC_API_KEY` is used.
 
 Runs on a VPS via a **user crontab** entry (NOT the systemd units in `deploy/` — those are an unused artifact and are not installed on the host):
 

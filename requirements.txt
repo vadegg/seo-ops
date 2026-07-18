@@ -1,5 +1,6 @@
 # Core
-anthropic>=0.103.0
+# LLM calls go through the `claude` CLI (Claude Code) as a subprocess — see
+# agents/runner.py::CLIAgentRunner. No Python SDK dependency.
 anyio>=4.4.0
 
 # Clients

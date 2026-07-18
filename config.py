@@ -35,8 +35,9 @@ def _load_dotenv(path: Path) -> None:
 
 
 # Required secret/identity variables. (name -> human description)
+# Note: no ANTHROPIC_API_KEY — the `claude` CLI authenticates via its own
+# logged-in subscription session, not an API key (see agents/runner.py).
 _REQUIRED = {
-    "ANTHROPIC_API_KEY": "Anthropic API key",
     "GSC_SERVICE_ACCOUNT_JSON": "path to GSC service-account JSON",
     "GSC_SITE_URL": "Search Console property URL",
     "DATAFORSEO_LOGIN": "DataForSEO login",
@@ -58,7 +59,6 @@ _PATH_VARS = {
 
 @dataclass(frozen=True)
 class Config:
-    anthropic_api_key: str
     gsc_service_account_json: Path
     gsc_site_url: str
     dataforseo_login: str
@@ -75,8 +75,10 @@ class Config:
     # tunables
     max_stage: int = 4
     agent_max_tokens: int = 8000
-    model_sonnet: str = "claude-sonnet-4-6"
-    model_opus: str = "claude-opus-4-7"
+    model_sonnet: str = "claude-sonnet-5"
+    model_opus: str = "claude-opus-4-8"
+    claude_bin: str = "claude"    # abs path for cron's trimmed PATH (cf. node_bin)
+    claude_timeout: int = 600     # per-call subprocess timeout, seconds
     timezone: str = "Europe/Lisbon"
     site_name: str = "Glasgow Research"
     author_name: str = "Vadim Glazkov"
@@ -126,11 +128,14 @@ class Config:
     node_bin: str = "node"        # node v22+ for publish-cli.ts (abs path in cron)
     ark_animal: str = "nightingale-seo-autoblog"
 
-    # Per-million-token USD prices for cost accounting (#5):
-    # (model_id, input_price_per_mtok, output_price_per_mtok).
+    # Per-million-token USD prices — a *fallback* only. Cost now comes straight
+    # from the CLI's per-call ``costUSD`` (cache-aware); this table is consulted
+    # by ``pipeline.usage.summarize`` only for records without a ``usd`` field
+    # (e.g. the test fakes). (model_id, input_price_per_mtok, output_price_per_mtok).
     model_prices: tuple = (
-        ("claude-opus-4-7", 15.0, 75.0),
         ("claude-opus-4-8", 15.0, 75.0),
+        ("claude-opus-4-7", 15.0, 75.0),
+        ("claude-sonnet-5", 3.0, 15.0),
         ("claude-sonnet-4-6", 3.0, 15.0),
         ("claude-haiku-4-5-20251001", 1.0, 5.0),
     )
@@ -217,7 +222,6 @@ class Config:
             "INDEXNOW_SITE_URL", _default_site).strip().rstrip("/")
 
         return Config(
-            anthropic_api_key=os.environ["ANTHROPIC_API_KEY"].strip(),
             gsc_service_account_json=Path(os.environ["GSC_SERVICE_ACCOUNT_JSON"].strip()),
             gsc_site_url=os.environ["GSC_SITE_URL"].strip(),
             dataforseo_login=os.environ["DATAFORSEO_LOGIN"].strip(),
@@ -232,8 +236,10 @@ class Config:
             evidence_dir=Path(os.environ["EVIDENCE_DIR"].strip()),
             max_stage=_int("MAX_STAGE", 4),
             agent_max_tokens=_int("AGENT_MAX_TOKENS", 8000),
-            model_sonnet=os.environ.get("MODEL_SONNET", "claude-sonnet-4-6").strip(),
-            model_opus=os.environ.get("MODEL_OPUS", "claude-opus-4-7").strip(),
+            model_sonnet=os.environ.get("MODEL_SONNET", "claude-sonnet-5").strip(),
+            model_opus=os.environ.get("MODEL_OPUS", "claude-opus-4-8").strip(),
+            claude_bin=os.environ.get("CLAUDE_BIN", "claude").strip(),
+            claude_timeout=_int("CLAUDE_TIMEOUT", 600),
             timezone=os.environ.get("TIMEZONE", "Europe/Lisbon").strip(),
             site_name=os.environ.get("SITE_NAME", "Glasgow Research").strip(),
             author_name=os.environ.get("AUTHOR_NAME", "Vadim Glazkov").strip(),

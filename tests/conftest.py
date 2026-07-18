@@ -23,7 +23,8 @@ class FakeRunner:
     def __init__(self, strategist_score: float = 0.9):
         self.score = strategist_score
         self.calls: list[str] = []
-        # Mirror SDKAgentRunner.records so usage accounting (#5) is exercised.
+        # Mirror CLIAgentRunner.records so usage accounting (#5) is exercised.
+        # No ``usd`` field here: the fake exercises the price-table fallback.
         self.records: list[dict] = []
 
     def run(self, *, name, system, user, model, tools, max_tokens, logger):
@@ -239,7 +240,7 @@ def project(tmp_path) -> Config:
     key.write_text("x", encoding="utf-8")
 
     return Config(
-        anthropic_api_key="test", gsc_service_account_json=key,
+        gsc_service_account_json=key,
         gsc_site_url="sc-domain:example.com", dataforseo_login="l",
         dataforseo_password="p", telegram_bot_token="t",
         telegram_chat_id="c", blog_repo_url="git@example:repo.git",

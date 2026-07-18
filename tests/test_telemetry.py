@@ -37,6 +37,18 @@ def test_unknown_model_listed_not_crash():
     assert r["total"]["usd"] == 0.0
 
 
+def test_record_usd_used_directly_bypasses_price_table():
+    # The CLI runner attaches an authoritative ``usd`` (cache-aware costUSD).
+    # summarize must trust it and NOT flag the model as unknown even though it
+    # is absent from the price table.
+    records = [{"agent": "writer", "model": "claude-sonnet-5",
+                "input_tokens": 1000, "output_tokens": 500, "usd": 0.0123}]
+    r = summarize(records, PRICES)  # PRICES has no claude-sonnet-5
+    assert abs(r["total"]["usd"] - 0.0123) < 1e-9
+    assert r["by_agent"]["writer"]["usd"] == 0.0123
+    assert r["unknown_models"] == []
+
+
 def test_usage_json_written_after_run(project, deps_factory):
     deps = deps_factory()
     run_pipeline(project, run_date="2026-05-19", dry_run=True, deps=deps)

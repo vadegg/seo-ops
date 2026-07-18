@@ -50,10 +50,11 @@ def default_deps(cfg, logger) -> PipelineDeps:
     from clients.gsc import GSCClient
     from clients.telegram import TelegramClient
 
-    from agents.runner import SDKAgentRunner
+    from agents.runner import CLIAgentRunner
 
     return PipelineDeps(
-        agent_runner=SDKAgentRunner(cfg.anthropic_api_key),
+        agent_runner=CLIAgentRunner(claude_bin=cfg.claude_bin,
+                                    timeout=cfg.claude_timeout),
         gsc=GSCClient(cfg.gsc_service_account_json, cfg.gsc_site_url, logger),
         dataforseo=DataForSEOClient(cfg.dataforseo_login,
                                     cfg.dataforseo_password, logger),

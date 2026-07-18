@@ -1,9 +1,9 @@
 # seo-autoblog
 
 Autonomous daily SEO post for the Glasgow Research Astro blog. A
-deterministic Python orchestrator drives Claude Agent SDK subagents,
-passes artifacts on disk, owns retries / model choice / escalation, and
-publishes by git commit → autodeploy. **A post ships every day** — weak
+deterministic Python orchestrator drives subagents via the `claude` CLI
+(Claude Code, headless), passes artifacts on disk, owns retries / model
+choice / escalation, and publishes by git commit → autodeploy. **A post ships every day** — weak
 candidates or dead APIs trigger escalation, never a skip.
 
 ## Pipeline
@@ -62,10 +62,11 @@ Copy `.env.example` → `.env` (on the VPS, outside git). `config.py`
 validates **all** secrets at startup — a missing key fails before any
 agent runs, listing every problem at once:
 
-`ANTHROPIC_API_KEY`, `GSC_SERVICE_ACCOUNT_JSON`, `GSC_SITE_URL`,
+`GSC_SERVICE_ACCOUNT_JSON`, `GSC_SITE_URL`,
 `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`, `TELEGRAM_BOT_TOKEN`,
 `TELEGRAM_CHAT_ID`, `BLOG_REPO_URL`, `GIT_DEPLOY_KEY`, `EVIDENCE_DIR`
-(+ optional tunables, see `.env.example`).
+(+ optional tunables, see `.env.example`). No `ANTHROPIC_API_KEY` — the
+`claude` CLI runs on its own logged-in subscription session.
 
 `EVIDENCE_DIR` is synced privately (rsync over SSH or a private repo),
 **never** in this repo.
@@ -79,7 +80,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python run.py --dry-run            # everything except git push
 .venv/bin/python run.py                       # real publish
 .venv/bin/python run.py --date 2026-05-19     # re-run a day (resume)
-.venv/bin/python -m pytest -q                 # tests (no network/SDK)
+.venv/bin/python -m pytest -q                 # tests (no network, no CLI)
 ```
 
 VPS (`/opt/seo-autoblog`):
@@ -101,8 +102,8 @@ degraded days. `MAX_STAGE` / `AGENT_MAX_TOKENS` cap it via config.
 
 ## Tests
 
-`pytest` (no network/SDK — all clients & the agent runner are
-dependency-injected and faked):
+`pytest` (no network, no `claude` subprocess — all clients & the agent
+runner are dependency-injected and faked):
 
 - config validation (all missing secrets reported at once)
 - artifact resume + idempotency

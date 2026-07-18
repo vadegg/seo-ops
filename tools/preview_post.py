@@ -52,7 +52,7 @@ def _draft() -> str:
 
 def main() -> None:
     cfg = Config(
-        anthropic_api_key="x", gsc_service_account_json=ROOT / "config.py",
+        gsc_service_account_json=ROOT / "config.py",
         gsc_site_url="x", dataforseo_login="x", dataforseo_password="x",
         telegram_bot_token="x", telegram_chat_id="x", blog_repo_url="x",
         git_deploy_key=ROOT / "config.py", blog_branch="main",

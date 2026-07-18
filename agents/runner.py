@@ -1,13 +1,17 @@
 """Isolation point for LLM calls.
 
 Every agent goes through AgentRunner.run. Control flow, model selection and
-artifact passing stay in the orchestrator, not in the agents.
+artifact passing stay in the orchestrator, not in the agents. The concrete
+runner shells out to the ``claude`` CLI (Claude Code, headless ``-p`` mode) —
+this module is the only place that knows the LLM backend.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
+import subprocess
 from typing import Protocol
 
 
@@ -83,83 +87,116 @@ def run_json(runner, *, name: str, system: str, user: str, model: str,
             ) from second
 
 
-# Anthropic server-side web search tool. The `name` field is required by the
-# API; the model runs the search server-side and returns results inline.
-_WEB_SEARCH_API_TOOL = {
-    "type": "web_search_20250305",
-    "name": "web_search",
-    "max_uses": 5,
-}
+def _extract_usage(name: str, model: str, data: dict) -> dict:
+    """Fold the CLI's usage block into one accounting record.
 
-# Max model turns when web search is enabled (server tool may `pause_turn`).
-_MAX_TOOL_TURNS = 8
+    The ``claude`` CLI reports usage two ways: a top-level ``usage`` object
+    and a per-model ``modelUsage`` map keyed by the resolved model id, which
+    also carries ``costUSD`` (cache-aware, authoritative). Prefer ``modelUsage``
+    — summing across entries — and fall back to ``usage`` + ``total_cost_usd``.
+    The ``usd`` field lets ``pipeline.usage.summarize`` skip the local price
+    table entirely (#5).
+    """
+    model_usage = data.get("modelUsage") or {}
+    if model_usage:
+        in_tok = sum(int(v.get("inputTokens", 0) or 0) for v in model_usage.values())
+        out_tok = sum(int(v.get("outputTokens", 0) or 0) for v in model_usage.values())
+        usd = sum(float(v.get("costUSD", 0.0) or 0.0) for v in model_usage.values())
+        rec_model = next(iter(model_usage)) if len(model_usage) == 1 else model
+    else:
+        u = data.get("usage") or {}
+        in_tok = int(u.get("input_tokens", 0) or 0)
+        out_tok = int(u.get("output_tokens", 0) or 0)
+        usd = float(data.get("total_cost_usd", 0.0) or 0.0)
+        rec_model = model
+    return {"agent": name, "model": rec_model,
+            "input_tokens": in_tok, "output_tokens": out_tok,
+            "usd": round(usd, 6)}
 
 
-class SDKAgentRunner:
-    """Runner backed by the direct Anthropic Messages API."""
+class CLIAgentRunner:
+    """Runner backed by the ``claude`` CLI (Claude Code, headless ``-p`` mode).
 
-    def __init__(self, api_key: str):
-        self._api_key = api_key
-        # Per-turn token usage, accumulated across the whole run (#5).
+    Each ``run`` is a stateless subprocess authenticated by the CLI's own
+    logged-in **subscription** session (Claude Max/Team) — no API key.
+    ``--system-prompt`` fully replaces Claude Code's default system prompt
+    (bare-agent mode); ``--safe-mode`` disables CLAUDE.md/hooks/plugins/MCP for
+    reproducible calls while keeping normal (subscription) auth. To guarantee
+    the subscription is used, ``ANTHROPIC_API_KEY`` is stripped from the child
+    environment so a stray key can't silently switch the run to API billing.
+    Web search maps to the CLI's built-in ``WebSearch`` tool; with no tools the
+    model just generates text. The CLI runs any agentic tool loop internally,
+    so this returns one usage record per call.
+    """
+
+    def __init__(self, claude_bin: str = "claude", timeout: int = 600):
+        self._bin = claude_bin
+        self._timeout = timeout
+        # One token/cost record per agent call, accumulated across the run (#5).
         self.records: list[dict] = []
 
     def run(self, *, name: str, system: str, user: str, model: str,
             tools: list[str], max_tokens: int, logger) -> str:
-        import anthropic
+        from clients.retry import ClientError
 
-        client = anthropic.Anthropic(api_key=self._api_key)
-
-        # Map SDK tool names to Anthropic API tools
-        api_tools = []
+        # max_tokens has no CLI equivalent (no --max-tokens flag); kept in the
+        # signature for the AgentRunner contract but not enforced here.
+        cmd = [
+            self._bin, "-p", user,
+            "--model", model,
+            "--output-format", "json",
+            "--system-prompt", system,
+            "--safe-mode",
+            "--no-session-persistence",
+        ]
         if "WebSearch" in tools:
-            api_tools.append(_WEB_SEARCH_API_TOOL)
+            # Built-in WebSearch is read-only; bypass keeps headless -p from
+            # blocking on a permission prompt.
+            cmd += ["--tools", "WebSearch", "--permission-mode", "bypassPermissions"]
+        else:
+            cmd += ["--tools", ""]
+
+        # Force the CLI's subscription/OAuth login: drop any ambient API key so
+        # it can't take precedence and bill per-token instead.
+        env = os.environ.copy()
+        env.pop("ANTHROPIC_API_KEY", None)
 
         if logger:
             logger.info("agent %s -> model=%s tools=%s", name, model, tools)
 
-        messages = [{"role": "user", "content": user}]
-        turns = 0
-        max_turns = _MAX_TOOL_TURNS if api_tools else 1
-        text_chunks: list[str] = []
-
-        while turns < max_turns:
-            turns += 1
-            kwargs = dict(
-                model=model,
-                system=system,
-                messages=messages,
-                max_tokens=max_tokens,
+        try:
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True, env=env,
+                timeout=self._timeout,
             )
-            if api_tools:
-                kwargs["tools"] = api_tools
+        except subprocess.TimeoutExpired as exc:
+            raise ClientError(
+                f"agent {name}: claude CLI timed out after {self._timeout}s") from exc
+        except OSError as exc:  # binary missing / not executable
+            raise ClientError(
+                f"agent {name}: could not spawn claude CLI ({self._bin}): {exc}") from exc
 
-            response = client.messages.create(**kwargs)
+        if proc.returncode != 0:
+            raise ClientError(
+                f"agent {name}: claude CLI exited {proc.returncode}: "
+                f"{(proc.stderr or '').strip()[:500]}")
 
-            # Token usage for cost accounting (#5). Multi-turn web search
-            # produces one record per turn under the same agent name.
-            usage = getattr(response, "usage", None)
-            if usage is not None:
-                self.records.append({
-                    "agent": name, "model": model,
-                    "input_tokens": getattr(usage, "input_tokens", 0) or 0,
-                    "output_tokens": getattr(usage, "output_tokens", 0) or 0,
-                })
+        try:
+            data = json.loads(proc.stdout)
+        except ValueError as exc:
+            raise ClientError(
+                f"agent {name}: claude CLI returned non-JSON output: "
+                f"{(proc.stdout or '').strip()[:500]}") from exc
 
-            # Collect text from this turn
-            for block in response.content:
-                if hasattr(block, "text"):
-                    text_chunks.append(block.text)
+        if data.get("is_error") or data.get("subtype") != "success":
+            raise ClientError(
+                f"agent {name}: claude CLI reported failure "
+                f"(subtype={data.get('subtype')}, api_error_status="
+                f"{data.get('api_error_status')})")
 
-            # Server-side web search runs inside one assistant turn and finishes
-            # with `end_turn`; a long agentic search yields `pause_turn`, which
-            # we continue by replaying the assistant content. No client-side
-            # tool_result is needed (the search executes on Anthropic's side).
-            if response.stop_reason == "pause_turn":
-                messages.append({"role": "assistant", "content": response.content})
-                continue
-            break
+        self.records.append(_extract_usage(name, model, data))
 
-        out = "\n".join(text_chunks).strip()
+        out = (data.get("result") or "").strip()
         if logger:
             logger.info("agent %s produced %d chars", name, len(out))
         if not out:

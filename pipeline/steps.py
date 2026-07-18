@@ -634,7 +634,7 @@ def run_steps(ctx: StepContext, selected: list[str]) -> None:
                     f"cannot run '{step.name}': missing input {inp}"
                     + (f" — run '{hint}' first" if hint else ""))
 
-        # Tag every line this step emits (incl. SDKAgentRunner's "agent ->
+        # Tag every line this step emits (incl. CLIAgentRunner's "agent ->
         # model" line) with the real agent name instead of "orchestrator".
         orig_logger = ctx.logger
         if orig_logger is not None:

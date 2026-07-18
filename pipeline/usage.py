@@ -20,11 +20,14 @@ def _cost(model: str, tin: int, tout: int, table: dict) -> float:
 
 
 def summarize(records: list, prices) -> dict:
-    """Fold per-turn usage records into a per-agent + total report.
+    """Fold per-call usage records into a per-agent + total report.
 
     ``records``: list of dicts with keys agent, model, input_tokens,
-    output_tokens. ``prices``: iterable of (model, in$/Mtok, out$/Mtok).
-    Unknown models cost 0 (and are listed so the gap is visible).
+    output_tokens, and optionally ``usd``. When a record carries ``usd`` (the
+    CLI's authoritative, cache-aware ``costUSD``) it is used directly and the
+    model is *not* flagged as unknown. Otherwise cost falls back to the local
+    price table — ``prices``: iterable of (model, in$/Mtok, out$/Mtok) — and an
+    unpriced model is listed so the gap is visible.
     """
     table = _price_table(prices)
     by_agent: dict[str, dict] = {}
@@ -37,9 +40,12 @@ def summarize(records: list, prices) -> dict:
         model = r.get("model", "?")
         tin = int(r.get("input_tokens", 0) or 0)
         tout = int(r.get("output_tokens", 0) or 0)
-        if model not in table:
-            unknown.add(model)
-        c = _cost(model, tin, tout, table)
+        if r.get("usd") is not None:
+            c = float(r["usd"])
+        else:
+            if model not in table:
+                unknown.add(model)
+            c = _cost(model, tin, tout, table)
         a = by_agent.setdefault(
             agent, {"input_tokens": 0, "output_tokens": 0, "usd": 0.0,
                     "calls": 0})
