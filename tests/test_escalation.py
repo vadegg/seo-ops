@@ -18,9 +18,9 @@ def test_low_score_escalates_to_guarantee_and_publishes(project, deps_factory):
     status = ArtifactStore(project.runs_dir / "2026-05-19").read_json(
         A.PUBLISHER)
     assert status["escalation_stage"] == 4
-    # degraded alerts fired
-    assert any("degraded to escalation level" in t
-               for _, t in deps.telegram.messages)
+    # degradations surfaced in the run report
+    assert any("degraded to escalation level" in r["detailed"]
+               for r in deps.fleet.reports)
 
 
 def test_api_unavailable_falls_through_to_independent_stage(project,
@@ -37,7 +37,7 @@ def test_api_unavailable_falls_through_to_independent_stage(project,
     assert "stage 3" in _esc_log(project)
 
 
-def test_editor_forced_final_opus_and_hard_alert(project, deps_factory):
+def test_editor_forced_final_opus_flagged_in_report(project, deps_factory):
     deps = deps_factory(runner=FailingEditorRunner(strategist_score=0.9))
     rc = run_pipeline(project, run_date="2026-05-19", dry_run=True, deps=deps)
     assert rc == 0
@@ -45,6 +45,11 @@ def test_editor_forced_final_opus_and_hard_alert(project, deps_factory):
     s = ArtifactStore(project.runs_dir / "2026-05-19")
     crit = s.read_json(A.EDITOR_CRITIQUE)
     assert crit.get("forced_final") is True
-    assert any(level == "hard" for level, _ in deps.telegram.messages)
+    # forced-final logs an ERROR degradation — surfaced in the report metrics.
+    # It is NOT a crash, so it never pings Telegram.
+    report = deps.fleet.reports[0]
+    assert report["status"] == "ok"
+    assert report["metrics"]["errors"] >= 1
+    assert deps.telegram.messages == []
     # still published despite failing checklist (day never skipped)
     assert s.exists(A.PUBLISHER)

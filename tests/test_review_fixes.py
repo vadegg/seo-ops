@@ -1,7 +1,8 @@
 """Regression tests for code-review fixes (#1 editor resilience,
-#2 isolated-run alerts, #4 escalation-ceiling WARN)."""
+#2 isolated-run reports, #4 escalation-ceiling WARN)."""
 
 import dataclasses
+import json
 
 from pipeline import artifacts as A
 from pipeline.artifacts import ArtifactStore
@@ -33,12 +34,15 @@ def test_editor_clienterror_still_publishes(project, deps_factory):
     assert s.read_text(A.EDITOR_MD) == s.read_text(A.WRITER)
 
 
-# ---- #2 isolated/resume runs still alert ----------------------------------
-def test_selected_steps_send_digest(project, deps_factory):
+# ---- #2 isolated/resume runs write an internal report (no fleet submit) ----
+def test_selected_steps_writes_report(project, deps_factory):
     deps = deps_factory()
     run_selected_steps(project, run_date="2026-05-19", step_names=STEP_NAMES,
                        dry_run=True, deps=deps)
-    assert len(deps.telegram.messages) == 1          # finalize ran
+    report = json.loads(
+        (project.runs_dir / "2026-05-19" / "report.json").read_text())
+    assert report["trigger"] == "manual"             # finalize ran
+    assert deps.fleet.reports == []                  # manual run never ships
 
 
 # ---- #4 ceiling acceptance is a degradation, not a clean run --------------
@@ -48,5 +52,4 @@ def test_escalation_ceiling_emits_warning(project, deps_factory):
     run_pipeline(cfg, run_date="2026-05-19", dry_run=True, deps=deps)
     log = (cfg.runs_dir / "2026-05-19" / "run.log").read_text()
     assert "ceiling reached" in log
-    level, _ = deps.telegram.messages[0]
-    assert level != "info"                           # forced low-score day
+    assert deps.fleet.reports[0]["metrics"]["degradations"] > 0  # forced day

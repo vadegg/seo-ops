@@ -10,9 +10,9 @@ Legend: `[ ]` open · `[x]` covered (≥1 published post)
 > hub: /blog/ux-research-methods
 - [x] usability testing (moderated vs unmoderated)
 - [x] user interviews & discussion guides
-- [ ] surveys & questionnaire design
+- [x] surveys & questionnaire design
 - [x] card sorting & tree testing
-- [ ] diary & longitudinal studies
+- [x] diary & longitudinal studies
 - [x] analytics-informed qualitative research
 
 ## Pillar: Research Operations
@@ -20,27 +20,27 @@ Legend: `[ ]` open · `[x]` covered (≥1 published post)
 - [x] research repositories
 - [x] participant recruitment & panels
 - [x] research democratisation & quality guardrails
-- [ ] research cadence & rituals
-- [ ] tooling & templates
+- [x] research cadence & rituals
+- [x] tooling & templates
 
 ## Pillar: Insight to Impact
 > hub: /blog/insight-to-impact
 - [x] synthesis & analysis workflows
-- [ ] communicating findings to stakeholders
+- [x] communicating findings to stakeholders
 - [x] measuring research ROI & impact
-- [ ] opportunity prioritisation
+- [x] opportunity prioritisation
 
 ## Pillar: Product Discovery
 > hub: /blog/product-discovery
 - [x] continuous discovery
 - [x] jobs-to-be-done
-- [ ] assumption & opportunity mapping
-- [ ] experiment design
+- [x] assumption & opportunity mapping
+- [x] experiment design
 
 ## Pillar: Product Research (B2B SaaS)
 > hub: /blog/product-research
 - [x] jobs-to-be-done interviews (B2B)
-- [ ] win-loss analysis for B2B SaaS
-- [ ] recruiting B2B interview participants
-- [ ] pricing research for B2B SaaS
-- [ ] churn research for SaaS
+- [x] win-loss analysis for B2B SaaS
+- [x] recruiting B2B interview participants
+- [x] pricing research for B2B SaaS
+- [x] churn research for SaaS

@@ -286,8 +286,8 @@ def step_editor(ctx: StepContext) -> None:
                     "notes": f"forced-final validation failed: {e}"}
     critique["forced_final"] = True
     escalation_log(ctx.run_dir, "editor: forced Opus final rewrite after 2 fails")
-    # ERROR so the digest escalates to a hard alert and the run-log summary
-    # flags it; the consolidated digest (#8) carries the user-facing note.
+    # ERROR so the run-log summary flags it and the fleet report surfaces it
+    # (metrics.errors >= 1); the run report's `detailed` carries the note.
     if ctx.logger:
         ctx.logger.error("editor did not pass the checklist in 2 iterations — "
                          "published the best (Opus) version; needs manual review")
@@ -300,7 +300,7 @@ def step_uniqueness(ctx: StepContext) -> None:
 
     Internal MinHash similarity of the edited body against already-published
     posts (topic_history bodies). Advisory only: above-threshold logs a WARN
-    (which feeds the degradation summary + Telegram digest) but NEVER blocks
+    (which feeds the degradation summary + fleet report) but NEVER blocks
     publication. The score is persisted to 05b for telemetry/resume."""
     from pipeline import uniqueness as U
 
@@ -322,7 +322,7 @@ def step_uniqueness(ctx: StepContext) -> None:
 
     if ctx.logger:
         if score >= threshold:
-            # WARN so the run-log degradation summary + digest surface it;
+            # WARN so the run-log degradation summary + run report surface it;
             # not an ERROR — a near-duplicate is a review flag, not a failure.
             ctx.logger.warning(
                 "uniqueness: body is highly similar (%.2f >= %.2f) to "
@@ -403,8 +403,8 @@ def step_publisher(ctx: StepContext) -> None:
         surplus=research.get("backlog_surplus") or [],
         published_keyword=brief.get("primary_keyword", ""))
     ctx.store.write_json(A.PUBLISHER, status)
-    # The per-publish Telegram message is gone: the orchestrator sends one
-    # consolidated end-of-run digest instead (#8), reusing _publish_report.
+    # No per-publish message: the orchestrator emits one end-of-run fleet
+    # report (+ internal report.json) instead, reusing build_digest/_publish_report.
 
 
 def _publish_report(ctx, brief: dict, topic: dict, status: dict,
@@ -449,9 +449,11 @@ def _publish_report(ctx, brief: dict, topic: dict, status: dict,
 
 
 def build_digest(ctx: StepContext, accumulator, usage_report: dict) -> tuple:
-    """One consolidated end-of-run message (#8): publish summary +
-    degradations (#3) + token/$ usage (#5). Returns (text, level) where
-    level is hard on a forced-final, warn on any degradation, else info.
+    """Human-readable end-of-run summary: publish summary + degradations (#3)
+    + token/$ usage (#5). Reused verbatim as the fleet run report's ``detailed``
+    text (see build_run_report). Returns (text, level); ``level`` (hard on a
+    forced-final, warn on any degradation, else info) is legacy and unused by
+    the report path.
     """
     store = ctx.store
     status = store.read_json(A.PUBLISHER) if store.exists(A.PUBLISHER) else {}
@@ -497,6 +499,79 @@ def build_digest(ctx: StepContext, accumulator, usage_report: dict) -> tuple:
             f"{_n(total.get('output_tokens', 0))} выход токенов)")
 
     return "\n".join(parts), level
+
+
+def build_run_report(cfg, run_dir, run_date, accumulator, usage_report, *,
+                     status, started_at, finished_at, run_id, trigger,
+                     trigger_id, error=None,
+                     animal="nightingale-seo-autoblog") -> dict:
+    """Assemble the fleet ``ReportInput`` for this run (ok / fail / skipped).
+
+    Reuses ``build_digest`` for the human ``detailed`` text and builds its own
+    store + synthetic ctx, so it works even on the crash path (no StepContext
+    exists yet). Does NOT emit ``schema_version`` / ``zoo`` / ``duration_ms`` —
+    the fleet CLI fills those. ``metrics`` values are always numbers.
+    """
+    store = ArtifactStore(run_dir)
+    pub = store.read_json(A.PUBLISHER) if store.exists(A.PUBLISHER) else {}
+    stage = int(pub.get("escalation_stage", 1))
+    ctx = SimpleNamespace(store=store, cfg=cfg, run_date=run_date, stage=stage)
+
+    detailed = build_digest(ctx, accumulator, usage_report or {})[0]
+
+    slug = pub.get("slug", "")
+    url = pub.get("url", "")
+    if status == "fail":
+        brief = f"Пайплайн упал на {run_date}: {str(error or '').strip()[:200]}"
+    elif status == "skipped":
+        brief = f"День {run_date} уже опубликован — холостой прогон."
+    elif slug:
+        brief = (f"Опубликовал статью «{slug}» "
+                 f"(стадия эскалации {stage}). {url}").strip()
+    else:
+        brief = f"Прогон {run_date} завершён (status={status})."
+
+    artifacts = [a for a in (url, pub.get("file", ""),
+                             str(Path(run_dir) / "run.log")) if a]
+
+    degr = list(getattr(accumulator, "degradations", []))
+    total = (usage_report or {}).get("total", {}) or {}
+    metrics: dict = {
+        "escalation_stage": stage,
+        "degradations": len(degr),
+        "errors": sum(1 for d in degr if d.get("level") == "ERROR"),
+    }
+    if total:
+        metrics["cost_usd"] = round(float(total.get("usd", 0.0)), 6)
+        metrics["input_tokens"] = int(total.get("input_tokens", 0))
+        metrics["output_tokens"] = int(total.get("output_tokens", 0))
+    bk = pub.get("backlog") or {}
+    for src, dst in (("added", "backlog_added"), ("pruned", "backlog_pruned"),
+                     ("kept", "backlog_kept")):
+        if src in bk:
+            metrics[dst] = int(bk[src])
+    if store.exists(A.UNIQUENESS):
+        try:
+            metrics["uniqueness_max_similarity"] = float(
+                store.read_json(A.UNIQUENESS).get("max_similarity", 0.0))
+        except (ValueError, OSError):
+            pass
+
+    return {
+        "animal": animal,
+        "run_id": run_id,
+        "trigger": trigger,
+        "trigger_id": trigger_id,
+        "attempt": 1,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "status": status,
+        "error": error,
+        "brief": brief,
+        "detailed": detailed,
+        "artifacts": artifacts,
+        "metrics": metrics,
+    }
 
 
 # --------------------------------------------------------------------------

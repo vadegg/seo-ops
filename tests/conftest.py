@@ -198,6 +198,19 @@ class FakeTelegram:
         self.messages.append((level, text))
 
 
+class FakeFleet:
+    """Records the ReportInput the orchestrator would submit. Records the call
+    regardless of dry_run so tests can inspect exactly what would ship; the
+    real FleetClient decides whether to actually hit the node CLI."""
+
+    def __init__(self):
+        self.reports: list[dict] = []
+
+    def submit(self, report_input, *, dry_run=False):
+        self.reports.append(report_input)
+        return None if dry_run else "reports/zoo/2026-05-19/x.json"
+
+
 @pytest.fixture
 def project(tmp_path) -> Config:
     """A Config rooted in a tmp copy of the persistent stores."""
@@ -241,11 +254,11 @@ def deps_factory():
     from pipeline.orchestrator import PipelineDeps
 
     def make(runner=None, gsc=None, dfs=None, evidence=None,
-             git=None, tg=None):
+             git=None, tg=None, fleet=None):
         return PipelineDeps(
             agent_runner=runner or FakeRunner(),
             gsc=gsc or FakeGSC(), dataforseo=dfs or FakeDFS(),
             evidence=evidence or FakeEvidence(), git=git or FakeGit(),
-            telegram=tg or FakeTelegram())
+            telegram=tg or FakeTelegram(), fleet=fleet or FakeFleet())
 
     return make

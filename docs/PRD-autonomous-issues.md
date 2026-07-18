@@ -125,6 +125,10 @@ escalation stage, degradations from #3, leak flag, tokens/$ from #5, next
 candidates). Only a fatal crash keeps its immediate hard alert.
 **Done:** a typical degraded run sends exactly one digest (+ crash alert only on
 fatal); test counts `telegram.send`.
+**Superseded:** the end-of-run status no longer goes to Telegram. It is now the
+ark-agent-fleet run report (`clients/fleet.py` + `build_run_report`, written to
+`runs/<date>/report.json`); Telegram is a fatal-crash-only ping. See CLAUDE.md
+"Run telemetry".
 
 ---
 

@@ -29,7 +29,7 @@ class _AgentFilter(logging.Filter):
 class RunLogAccumulator(logging.Handler):
     """Collects every WARN/ERROR record of a run so the orchestrator can
     print a single 'what went wrong' summary instead of making the reader
-    grep the whole INFO stream (#3). Also feeds the Telegram digest (#8).
+    grep the whole INFO stream (#3). Also feeds the fleet run report.
     """
 
     def __init__(self) -> None:
@@ -65,7 +65,7 @@ def setup_run_logging(run_dir: Path) -> "RunLogAccumulator":
 
     Writes to ``<run_dir>/run.log`` and stderr (captured by journald) and
     attaches a :class:`RunLogAccumulator`, returned so the caller can
-    render the end-of-run degradation summary + digest.
+    render the end-of-run degradation summary + fleet run report.
     Idempotent: re-configuring the same run replaces handlers.
     """
     run_dir.mkdir(parents=True, exist_ok=True)

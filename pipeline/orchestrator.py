@@ -14,8 +14,11 @@ agent runner and external clients for fakes (no network/SDK needed).
 from __future__ import annotations
 
 import json
+import secrets
 import sys
+import traceback
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 from logging_setup import escalation_log, get_agent_logger, setup_run_logging
@@ -35,12 +38,14 @@ class PipelineDeps:
     dataforseo: object
     evidence: object
     git: object
-    telegram: object
+    telegram: object      # fatal-crash-only alert (see run_pipeline except)
+    fleet: object         # ark-agent-fleet run report (primary result channel)
 
 
 def default_deps(cfg, logger) -> PipelineDeps:
     from clients.dataforseo import DataForSEOClient
     from clients.evidence import EvidenceClient
+    from clients.fleet import FleetClient
     from clients.git_client import GitClient
     from clients.gsc import GSCClient
     from clients.telegram import TelegramClient
@@ -57,6 +62,8 @@ def default_deps(cfg, logger) -> PipelineDeps:
                       cfg.runs_dir / "_blog_repo", logger),
         telegram=TelegramClient(cfg.telegram_bot_token, cfg.telegram_chat_id,
                                 logger),
+        fleet=FleetClient(cfg.ark_repo, cfg.ark_zoo, no_sync=cfg.ark_no_sync,
+                          node_bin=cfg.node_bin, logger=logger),
     )
 
 
@@ -142,7 +149,7 @@ def _research_and_select(ctx: StepContext, ladder: EscalationLadder):
             break
         if ladder.at_guarantee():
             # Accepting a below-threshold topic at the ceiling IS a
-            # degradation — WARN so the digest doesn't read as a clean run.
+            # degradation — WARN so the report doesn't read as a clean run.
             ctx.logger.warning("escalation ceiling reached (stage %d) — "
                                "accepting best available topic (score %.2f "
                                "below %.2f)", ladder.stage, score,
@@ -160,19 +167,34 @@ def run_pipeline(cfg, *, run_date: str, dry_run: bool = False,
     accumulator = setup_run_logging(run_dir)
     logger = get_agent_logger("orchestrator")
 
+    started_at = datetime.now(timezone.utc).isoformat()
+    run_id = f"{started_at}-{cfg.ark_animal}-{secrets.token_hex(3)}"
+    trigger_id = f"cron:{run_date}"
+
     logger.info("=== run start date=%s dry_run=%s ===", run_date, dry_run)
+
+    # Resolve deps before the idempotency check (all client constructors are
+    # side-effect-free) so a no-op day can still emit a `skipped` report — the
+    # fleet contract is "a report on every run".
+    if deps is None:
+        deps = default_deps(cfg, logger)
 
     if ArtifactStore(run_dir).is_published():
         logger.info("idempotent no-op: already published for %s", run_date)
+        report = S.build_run_report(
+            cfg, run_dir, run_date, accumulator, {}, status="skipped",
+            started_at=started_at,
+            finished_at=datetime.now(timezone.utc).isoformat(),
+            run_id=run_id, trigger="cron", trigger_id=trigger_id,
+            animal=cfg.ark_animal)
+        _deliver_report(deps, run_dir, report, submit=True, dry_run=dry_run,
+                        logger=logger)
         return 0
-
-    if deps is None:
-        deps = default_deps(cfg, logger)
 
     try:
         ctx = _build_context(cfg, deps, run_date, dry_run=dry_run,
                              stage=start_stage, force=False, logger=logger)
-        ladder = EscalationLadder(cfg, run_dir, deps.telegram, logger,
+        ladder = EscalationLadder(cfg, run_dir, logger,
                                   start_stage=start_stage)
 
         _research_and_select(ctx, ladder)
@@ -183,7 +205,9 @@ def run_pipeline(cfg, *, run_date: str, dry_run: bool = False,
 
         status = ctx.store.read_json(A.PUBLISHER)
         logger.info("=== run complete status=%s ===", status["status"])
-        _finalize_run(ctx, deps, run_dir, accumulator)
+        _finalize_run(ctx, deps, run_dir, accumulator, started_at=started_at,
+                      run_id=run_id, trigger="cron", trigger_id=trigger_id,
+                      status="ok", submit=True)
         return 0
 
     except Exception as exc:  # noqa: BLE001
@@ -191,42 +215,75 @@ def run_pipeline(cfg, *, run_date: str, dry_run: bool = False,
         escalation_log(run_dir, f"FATAL: {exc}")
         logger.info("%s", accumulator.summary_block())
         try:
-            if deps and deps.telegram:
+            from pipeline import usage as U
+            records = (list(getattr(deps.agent_runner, "records", []) or [])
+                       if deps else [])
+            usage_report = U.summarize(records, cfg.model_prices)
+        except Exception:  # noqa: BLE001
+            usage_report = {}
+        report = S.build_run_report(
+            cfg, run_dir, run_date, accumulator, usage_report, status="fail",
+            started_at=started_at,
+            finished_at=datetime.now(timezone.utc).isoformat(),
+            run_id=run_id, trigger="cron", trigger_id=trigger_id,
+            error=traceback.format_exc(), animal=cfg.ark_animal)
+        _deliver_report(deps, run_dir, report, submit=True, dry_run=dry_run,
+                        logger=logger)
+        # Last-resort out-of-band ping: if the ark/VPS itself is down the fleet
+        # report may not deliver, so a fatal crash still pings Telegram.
+        try:
+            if deps and getattr(deps, "telegram", None):
                 deps.telegram.send(
-                    f"Пайплайн упал на {run_date}.\n\n"
-                    f"Ошибка: {str(exc)[:1500]}", level="hard")
-                deps.telegram.send_document(
-                    run_dir / "run.log",
-                    caption=f"Лог прогона {run_date}", level="hard")
+                    f"Пайплайн упал на {run_date}: {str(exc)[:1500]}",
+                    level="hard")
         except Exception:  # noqa: BLE001
             pass
         return 1
 
 
-def _finalize_run(ctx, deps, run_dir, accumulator) -> None:
-    """End-of-run telemetry (#3/#5/#8): write usage.json, append the
-    degradation summary to run.log, send one consolidated Telegram digest.
-    Never raises — finalization must not turn a published run into a failure.
+def _deliver_report(deps, run_dir, report, *, submit, dry_run, logger) -> None:
+    """Write the machine-readable run summary to runs/<date>/report.json and
+    (for autonomous runs) submit it to the fleet. Both are fail-soft."""
+    try:
+        ArtifactStore(run_dir).write_json(A.RUN_REPORT, report)
+    except Exception as exc:  # noqa: BLE001
+        if logger:
+            logger.warning("report.json write failed: %s", exc)
+    if submit and getattr(deps, "fleet", None):
+        deps.fleet.submit(report, dry_run=dry_run)
+
+
+def _finalize_run(ctx, deps, run_dir, accumulator, *, started_at, run_id,
+                  trigger, trigger_id, status="ok", error=None,
+                  submit=True) -> None:
+    """End-of-run telemetry (#3/#5): write usage.json, append the degradation
+    summary to run.log, build the run report, persist it to report.json, and
+    (if submit) send it to the fleet. Never raises — finalization must not turn
+    a published run into a failure.
     """
     from pipeline import usage as U
-    from pipeline.steps import build_digest
 
     try:
         records = list(getattr(deps.agent_runner, "records", []) or [])
-        report = U.summarize(records, ctx.cfg.model_prices)
-        ctx.store.write_json("usage.json", report)
+        usage_report = U.summarize(records, ctx.cfg.model_prices)
+        ctx.store.write_json("usage.json", usage_report)
     except Exception as exc:  # noqa: BLE001
         ctx.logger.warning("usage accounting failed: %s", exc)
-        report = {}
+        usage_report = {}
 
     ctx.logger.info("%s", accumulator.summary_block())
 
     try:
-        text, level = build_digest(ctx, accumulator, report)
-        if deps.telegram:
-            deps.telegram.send(text, level=level)
+        report = S.build_run_report(
+            ctx.cfg, run_dir, ctx.run_date, accumulator, usage_report,
+            status=status, started_at=started_at,
+            finished_at=datetime.now(timezone.utc).isoformat(),
+            run_id=run_id, trigger=trigger, trigger_id=trigger_id, error=error,
+            animal=ctx.cfg.ark_animal)
+        _deliver_report(deps, run_dir, report, submit=submit,
+                        dry_run=ctx.dry_run, logger=ctx.logger)
     except Exception as exc:  # noqa: BLE001
-        ctx.logger.warning("digest send failed: %s", exc)
+        ctx.logger.warning("run report failed: %s", exc)
 
 
 def run_selected_steps(cfg, *, run_date: str, step_names: list[str],
@@ -238,6 +295,8 @@ def run_selected_steps(cfg, *, run_date: str, step_names: list[str],
     run_dir = cfg.runs_dir / run_date
     accumulator = setup_run_logging(run_dir)
     logger = get_agent_logger("orchestrator")
+    started_at = datetime.now(timezone.utc).isoformat()
+    run_id = f"{started_at}-{cfg.ark_animal}-{secrets.token_hex(3)}"
     logger.info("=== selected steps %s date=%s dry_run=%s stage=%d ===",
                 step_names, run_date, dry_run, start_stage)
 
@@ -249,10 +308,12 @@ def run_selected_steps(cfg, *, run_date: str, step_names: list[str],
                              stage=start_stage, force=force, logger=logger)
         run_steps(ctx, step_names)
         logger.info("=== selected steps complete ===")
-        # Same end-of-run telemetry as a full run: an isolated/resume run that
-        # forces a final rewrite must still alert, and a real
-        # `--from publisher` must still send the publish summary (#8).
-        _finalize_run(ctx, deps, run_dir, accumulator)
+        # Same end-of-run telemetry as a full run, but manual: write the
+        # internal report.json (trigger="manual") WITHOUT submitting to the
+        # shared fleet journal — that reflects the autonomous cron run only.
+        _finalize_run(ctx, deps, run_dir, accumulator, started_at=started_at,
+                      run_id=run_id, trigger="manual", trigger_id="",
+                      status="ok", submit=False)
         return 0
     except S.StepInputError as exc:
         logger.error("%s", exc)
