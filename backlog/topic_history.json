@@ -281,6 +281,286 @@
       "url": "https://blog.glasgow.works/blog/jtbd-interviews-b2b-saas",
       "date": "2026-05-19",
       "escalation_stage": 1
+    },
+    {
+      "topic": "switch interview technique",
+      "keyword": "switch interview technique",
+      "slug": "switch-interview-technique",
+      "url": "https://blog.glasgow.works/blog/switch-interview-technique",
+      "date": "2026-06-07",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Churn Research for SaaS: How to Find Out Why Customers Leave",
+      "keyword": "churn research for SaaS",
+      "slug": "churn-research-for-saas",
+      "url": "https://blog.glasgow.works/blog/churn-research-for-saas",
+      "date": "2026-06-08",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "User Research Plan Template: How to Structure a Study Before You Start",
+      "keyword": "user research plan template",
+      "slug": "user-research-plan-template",
+      "url": "https://blog.glasgow.works/blog/user-research-plan-template",
+      "date": "2026-06-09",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Communicating Research Findings to Stakeholders",
+      "keyword": "communicating research findings to stakeholders",
+      "slug": "communicating-research-findings-to-stakeholders",
+      "url": "https://blog.glasgow.works/blog/communicating-research-findings-to-stakeholders",
+      "date": "2026-06-10",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Diary Studies in UX Research: How to Run Longitudinal Studies",
+      "keyword": "diary study ux research",
+      "slug": "diary-study-ux-research",
+      "url": "https://blog.glasgow.works/blog/diary-study-ux-research",
+      "date": "2026-06-19",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Survey Design Best Practices for UX Research",
+      "keyword": "survey design best practices ux",
+      "slug": "survey-design-best-practices-ux",
+      "url": "https://blog.glasgow.works/blog/survey-design-best-practices-ux",
+      "date": "2026-06-20",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Win-Loss Analysis for B2B SaaS",
+      "keyword": "win-loss analysis for B2B SaaS",
+      "slug": "win-loss-analysis-b2b-saas",
+      "url": "https://blog.glasgow.works/blog/win-loss-analysis-b2b-saas",
+      "date": "2026-06-21",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Opportunity Prioritisation in Product Research",
+      "keyword": "opportunity prioritisation",
+      "slug": "opportunity-prioritisation-product-research",
+      "url": "https://blog.glasgow.works/blog/opportunity-prioritisation-product-research",
+      "date": "2026-06-22",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Recruiting B2B Interview Participants",
+      "keyword": "recruiting b2b interview participants",
+      "slug": "recruiting-b2b-interview-participants",
+      "url": "https://blog.glasgow.works/blog/recruiting-b2b-interview-participants",
+      "date": "2026-06-23",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Assumption and Opportunity Mapping in Product Discovery",
+      "keyword": "assumption mapping product discovery",
+      "slug": "assumption-mapping-product-discovery",
+      "url": "https://blog.glasgow.works/blog/assumption-mapping-product-discovery",
+      "date": "2026-06-24",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Experiment Design for Product Discovery",
+      "keyword": "experiment design product discovery",
+      "slug": "experiment-design-product-discovery",
+      "url": "https://blog.glasgow.works/blog/experiment-design-product-discovery",
+      "date": "2026-06-25",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Usability Testing vs User Interviews: How to Choose",
+      "keyword": "usability testing vs user interviews",
+      "slug": "usability-testing-vs-user-interviews",
+      "url": "https://blog.glasgow.works/blog/usability-testing-vs-user-interviews",
+      "date": "2026-06-26",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "How to Analyze User Interview Data",
+      "keyword": "how to analyze user interview data",
+      "slug": "how-to-analyze-user-interview-data",
+      "url": "https://blog.glasgow.works/blog/how-to-analyze-user-interview-data",
+      "date": "2026-06-27",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Thematic Analysis in Qualitative Research: A Practitioner's Guide",
+      "keyword": "thematic analysis qualitative research",
+      "slug": "thematic-analysis-qualitative-research",
+      "url": "https://blog.glasgow.works/blog/thematic-analysis-qualitative-research",
+      "date": "2026-06-28",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "B2B Buyer Research Methods: How to Understand the People Who Actually Buy",
+      "keyword": "b2b buyer research methods",
+      "slug": "b2b-buyer-research-methods",
+      "url": "https://blog.glasgow.works/blog/b2b-buyer-research-methods",
+      "date": "2026-06-29",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Research Debt in Product Teams: What It Is and How to Reduce It",
+      "keyword": "research debt in product teams",
+      "slug": "research-debt-in-product-teams",
+      "url": "https://blog.glasgow.works/blog/research-debt-in-product-teams",
+      "date": "2026-06-30",
+      "escalation_stage": 2
+    },
+    {
+      "topic": "Tree Testing in UX Research: How to Run It and What It Tells You",
+      "keyword": "tree testing in UX research",
+      "slug": "tree-testing-ux-research",
+      "url": "https://blog.glasgow.works/blog/tree-testing-ux-research",
+      "date": "2026-07-01",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "How to Measure UX Research ROI",
+      "keyword": "how to measure UX research ROI",
+      "slug": "how-to-measure-ux-research-roi",
+      "url": "https://blog.glasgow.works/blog/how-to-measure-ux-research-roi",
+      "date": "2026-07-02",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Contextual Inquiry: How to Run It and What It Tells You",
+      "keyword": "contextual inquiry user research",
+      "slug": "contextual-inquiry-user-research",
+      "url": "https://blog.glasgow.works/blog/contextual-inquiry-user-research",
+      "date": "2026-07-03",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "UX Maturity Model for Product Teams",
+      "keyword": "UX maturity model for product teams",
+      "slug": "ux-maturity-model-for-product-teams",
+      "url": "https://blog.glasgow.works/blog/ux-maturity-model-for-product-teams",
+      "date": "2026-07-04",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Research Democratization: Risks and How to Do It Right",
+      "keyword": "research democratization risks and how to do it right",
+      "slug": "research-democratization-risks-and-how-to-do-it-right",
+      "url": "https://blog.glasgow.works/blog/research-democratization-risks-and-how-to-do-it-right",
+      "date": "2026-07-05",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Remote Usability Testing: Best Practices for Getting Reliable Results",
+      "keyword": "remote usability testing best practices",
+      "slug": "remote-usability-testing-best-practices",
+      "url": "https://blog.glasgow.works/blog/remote-usability-testing-best-practices",
+      "date": "2026-07-06",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "UX Research Methods Comparison: A Side-by-Side Guide for Practitioners",
+      "keyword": "ux research methods comparison",
+      "slug": "ux-research-methods-comparison",
+      "url": "https://blog.glasgow.works/blog/ux-research-methods-comparison",
+      "date": "2026-07-07",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "how to write a UX research report",
+      "keyword": "how to write a UX research report",
+      "slug": "how-to-write-a-ux-research-report",
+      "url": "https://blog.glasgow.works/blog/how-to-write-a-ux-research-report",
+      "date": "2026-07-08",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Inclusive UX Research Methods: How to Design Studies That Don't Exclude",
+      "keyword": "inclusive UX research methods",
+      "slug": "inclusive-ux-research-methods",
+      "url": "https://blog.glasgow.works/blog/inclusive-ux-research-methods",
+      "date": "2026-07-09",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "B2B Customer Journey Mapping Research",
+      "keyword": "b2b customer journey mapping research",
+      "slug": "b2b-customer-journey-mapping-research",
+      "url": "https://blog.glasgow.works/blog/b2b-customer-journey-mapping-research",
+      "date": "2026-07-10",
+      "escalation_stage": 2
+    },
+    {
+      "topic": "Unmoderated Usability Testing Tools: How to Choose the Right One",
+      "keyword": "unmoderated usability testing tools",
+      "slug": "unmoderated-usability-testing-tools",
+      "url": "https://blog.glasgow.works/blog/unmoderated-usability-testing-tools",
+      "date": "2026-07-11",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "How to Write a Discussion Guide for User Interviews",
+      "keyword": "how to write a discussion guide for user interviews",
+      "slug": "how-to-write-discussion-guide-user-interviews",
+      "url": "https://blog.glasgow.works/blog/how-to-write-discussion-guide-user-interviews",
+      "date": "2026-07-12",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Heuristic Evaluation in UX Research: A Practitioner's Guide",
+      "keyword": "heuristic evaluation in UX research",
+      "slug": "heuristic-evaluation-ux-research",
+      "url": "https://blog.glasgow.works/blog/heuristic-evaluation-ux-research",
+      "date": "2026-07-13",
+      "escalation_stage": 2
+    },
+    {
+      "topic": "Mixed Methods Research in UX: How to Combine Qual and Quant Effectively",
+      "keyword": "mixed methods research UX",
+      "slug": "mixed-methods-research-ux",
+      "url": "https://blog.glasgow.works/blog/mixed-methods-research-ux",
+      "date": "2026-05-20",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Screener Survey Best Practices for UX Research",
+      "keyword": "screener survey best practices UX research",
+      "slug": "screener-survey-best-practices-ux-research",
+      "url": "https://blog.glasgow.works/blog/screener-survey-best-practices-ux-research",
+      "date": "2026-07-14",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Product Analytics vs User Research: How to Know Which One You Need",
+      "keyword": "product analytics vs user research",
+      "slug": "product-analytics-vs-user-research",
+      "url": "https://blog.glasgow.works/blog/product-analytics-vs-user-research",
+      "date": "2026-07-15",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Service Blueprint UX Research: A Practitioner's Guide",
+      "keyword": "service blueprint UX research",
+      "slug": "service-blueprint-ux-research",
+      "url": "https://blog.glasgow.works/blog/service-blueprint-ux-research",
+      "date": "2026-07-16",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "UX Research for B2B SaaS: Methods, Challenges, and How to Do It Well",
+      "keyword": "UX research for B2B SaaS",
+      "slug": "ux-research-b2b-saas",
+      "url": "https://blog.glasgow.works/blog/ux-research-b2b-saas",
+      "date": "2026-07-17",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "How to Analyse Survey Data Qualitatively",
+      "keyword": "how to analyse survey data qualitatively",
+      "slug": "how-to-analyse-survey-data-qualitatively",
+      "url": "https://blog.glasgow.works/blog/how-to-analyse-survey-data-qualitatively",
+      "date": "2026-07-18",
+      "escalation_stage": 1
     }
   ]
 }

@@ -1,52 +1,92 @@
 {
   "schema": "keyword_backlog/v1",
-  "updated": "2026-05-19",
+  "updated": "2026-07-18",
   "note": "Scored unused candidates (score 0..1 + date). Researcher reads here first (cheap reserve before paid APIs). After each publish the Publisher folds in the day's non-selected candidates + surplus, then prunes: drops already-published and below-floor entries, keeps the top-N by score.",
   "candidates": [
     {
-      "keyword": "switch interview technique",
-      "score": 0.72,
-      "date": "2026-06-04"
-    },
-    {
-      "keyword": "ux research methods comparison",
-      "score": 0.7,
-      "date": "2026-05-30"
-    },
-    {
-      "keyword": "usability testing vs user interviews",
+      "keyword": "survey bots and fake responses in UX research",
       "score": 0.67,
-      "date": "2026-06-03"
+      "date": "2026-06-30"
     },
     {
-      "keyword": "thematic analysis qualitative research",
+      "keyword": "continuous discovery in product teams",
+      "score": 0.67,
+      "date": "2026-07-13"
+    },
+    {
+      "keyword": "UX research panel management",
+      "score": 0.66,
+      "date": "2026-07-13"
+    },
+    {
+      "keyword": "first click testing ux",
       "score": 0.64,
-      "date": "2026-06-03"
+      "date": "2026-07-09"
     },
     {
-      "keyword": "churn research for SaaS",
+      "keyword": "empathy mapping in UX research how to run",
+      "score": 0.63,
+      "date": "2026-07-13"
+    },
+    {
+      "keyword": "how to present research findings to stakeholders",
       "score": 0.62,
-      "date": "2026-06-04"
+      "date": "2026-06-10"
     },
     {
-      "keyword": "remote usability testing best practices",
-      "score": 0.6,
-      "date": "2026-06-03"
+      "keyword": "UX benchmarking how to run a benchmarking study",
+      "score": 0.62,
+      "date": "2026-06-30"
+    },
+    {
+      "keyword": "UX research storytelling for stakeholders",
+      "score": 0.62,
+      "date": "2026-07-13"
     },
     {
       "keyword": "when to use qualitative vs quantitative research",
-      "score": 0.57,
+      "score": 0.58,
       "date": "2026-06-03"
     },
     {
-      "keyword": "how to analyze user interview data",
-      "score": 0.55,
+      "keyword": "market research vs ux research differences",
+      "score": 0.58,
       "date": "2026-06-03"
+    },
+    {
+      "keyword": "how to run a cognitive walkthrough in ux",
+      "score": 0.58,
+      "date": "2026-07-09"
+    },
+    {
+      "keyword": "ux research stakeholder buy-in",
+      "score": 0.57,
+      "date": "2026-06-10"
+    },
+    {
+      "keyword": "participant incentives for user research",
+      "score": 0.56,
+      "date": "2026-07-09"
+    },
+    {
+      "keyword": "ux research repository best practices",
+      "score": 0.55,
+      "date": "2026-06-10"
     },
     {
       "keyword": "research ops for small teams",
-      "score": 0.54,
+      "score": 0.55,
       "date": "2026-06-04"
+    },
+    {
+      "keyword": "how to run a focus group for product research",
+      "score": 0.53,
+      "date": "2026-06-10"
+    },
+    {
+      "keyword": "ux research for enterprise products",
+      "score": 0.53,
+      "date": "2026-07-09"
     },
     {
       "keyword": "jobs to be done framework ux",
@@ -54,23 +94,8 @@
       "date": "2026-06-03"
     },
     {
-      "keyword": "user research plan template",
-      "score": 0.5,
-      "date": "2026-06-03"
-    },
-    {
-      "keyword": "market research vs ux research differences",
-      "score": 0.47,
-      "date": "2026-06-03"
-    },
-    {
-      "keyword": "unmoderated usability testing tools",
-      "score": 0.45,
-      "date": "2026-06-03"
-    },
-    {
       "keyword": "how to write a research brief for ux projects",
-      "score": 0.42,
+      "score": 0.46,
       "date": "2026-06-04"
     }
   ]
