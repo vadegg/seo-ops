@@ -490,13 +490,10 @@ def build_digest(ctx: StepContext, accumulator, usage_report: dict) -> tuple:
     # article (#5). State it explicitly so it reads as the article's price.
     total = usage_report.get("total", {}) if usage_report else {}
     if total:
-        def _n(v: int) -> str:           # space thousands separator
-            return f"{int(v):,}".replace(",", " ")
+        # Цена статьи — человекочитаемый контекст; разбивка по токенам живёт в metrics.
         parts.append("")
-        parts.append(
-            f"💸 Стоимость статьи: ~${total.get('usd', 0):.2f} "
-            f"({_n(total.get('input_tokens', 0))} вход / "
-            f"{_n(total.get('output_tokens', 0))} выход токенов)")
+        parts.append(f"💸 Стоимость статьи: ~${total.get('usd', 0):.2f} "
+                     "(разбивка по токенам — в метриках отчёта)")
 
     return "\n".join(parts), level
 
@@ -521,15 +518,20 @@ def build_run_report(cfg, run_dir, run_date, accumulator, usage_report, *,
 
     slug = pub.get("slug", "")
     url = pub.get("url", "")
+    # Человеческий заголовок темы (не slug): из аутлайнера/стратега, иначе slug.
+    outliner = store.read_json(A.OUTLINER) if store.exists(A.OUTLINER) else {}
+    strat = store.read_json(A.STRATEGIST) if store.exists(A.STRATEGIST) else {}
+    title = outliner.get("title") or strat.get("topic") or slug
+    # brief — одна тёплая фраза-итог: без URL/стадии/чисел (их место в artifacts/metrics),
+    # это единственное, что видит человек в дайджесте флота.
     if status == "fail":
-        brief = f"Пайплайн упал на {run_date}: {str(error or '').strip()[:200]}"
+        brief = "Статью выпустить не удалось — пайплайн оборвался; черновик и логи сохранены."
     elif status == "skipped":
-        brief = f"День {run_date} уже опубликован — холостой прогон."
+        brief = "Новой статьи сегодня не публиковал — этот день уже закрыт."
     elif slug:
-        brief = (f"Опубликовал статью «{slug}» "
-                 f"(стадия эскалации {stage}). {url}").strip()
+        brief = f"Сегодня в блог вышла новая статья — «{title}»."
     else:
-        brief = f"Прогон {run_date} завершён (status={status})."
+        brief = "Прогон завершён — публиковать сегодня было нечего."
 
     artifacts = [a for a in (url, pub.get("file", ""),
                              str(Path(run_dir) / "run.log")) if a]
