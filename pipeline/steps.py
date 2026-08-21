@@ -67,9 +67,15 @@ def gather_research_context(cfg, deps, spec, logger):
 
     if spec.use_gsc:
         try:
-            min_pos, max_pos = (5.0, 20.0) if spec.stage == 1 else (3.0, 40.0)
-            gsc_rows = deps.gsc.near_top_queries(min_pos=min_pos,
-                                                 max_pos=max_pos)
+            # Stage 2 is "loosen GSC thresholds": widen the position band AND
+            # drop the impressions floor. On a young blog the default floor of
+            # 20 impressions leaves a single query, which starves the
+            # Researcher and pushes it back onto the keyword reserve.
+            stage_1 = spec.stage == 1
+            min_pos, max_pos = (5.0, 20.0) if stage_1 else (3.0, 40.0)
+            gsc_rows = deps.gsc.near_top_queries(
+                min_pos=min_pos, max_pos=max_pos,
+                min_impressions=20 if stage_1 else 5)
         except ClientError as e:
             if logger:
                 logger.warning("GSC unavailable at stage %d: %s", spec.stage, e)

@@ -252,3 +252,31 @@ def test_resolve_steps_explicit_and_ranges():
     assert _resolve_steps(_ns(from_step="outliner",
                               stop_after="editor")) == ["outliner", "writer",
                                                         "editor"]
+
+
+def test_stage_2_loosens_the_gsc_impression_floor(project, deps_factory):
+    """Stage 2's job is "loosen GSC thresholds". It used to widen only the
+    position band and keep the client's impressions>=20 default, which on a
+    young blog leaves ~1 query — so the Researcher fell back to the keyword
+    reserve and recycled it."""
+    from pipeline.escalation import STAGES
+    from pipeline.steps import gather_research_context
+
+    seen = []
+
+    class RecordingGSC:
+        def near_top_queries(self, **kw):
+            seen.append(kw)
+            return [{"query": "q", "clicks": 0, "impressions": 5,
+                     "ctr": 0.0, "position": 12.0}]
+
+    class NoDFS:
+        def keyword_metrics(self, seeds):
+            return []
+
+    deps = deps_factory(gsc=RecordingGSC(), dfs=NoDFS())
+    for stage in (1, 2):
+        gather_research_context(project, deps, STAGES[stage], logger=None)
+    assert seen[0]["min_pos"] == 5.0 and seen[0]["max_pos"] == 20.0
+    assert seen[1]["min_pos"] == 3.0 and seen[1]["max_pos"] == 40.0
+    assert seen[1]["min_impressions"] < seen[0].get("min_impressions", 20)
