@@ -381,13 +381,6 @@
       "date": "2026-07-23"
     },
     {
-      "cluster": "usability testing — testing AI & agentic features (specialised method)",
-      "url": "https://blog.glasgow.works/blog/how-to-test-agentic-features",
-      "slug": "how-to-test-agentic-features",
-      "title": "How to Test Agentic Features: A UX Research Guide",
-      "date": "2026-07-24"
-    },
-    {
       "cluster": "Research Operations — sourcing & scaling research capability (build vs buy)",
       "url": "https://blog.glasgow.works/blog/when-to-outsource-user-research-agency-vs-in-house",
       "slug": "when-to-outsource-user-research-agency-vs-in-house",
@@ -416,13 +409,6 @@
       "date": "2026-07-29"
     },
     {
-      "cluster": "usability testing — extended to emerging agentic/autonomous interfaces",
-      "url": "https://blog.glasgow.works/blog/how-to-test-ai-agents-ux-research",
-      "slug": "how-to-test-ai-agents-ux-research",
-      "title": "How to Test AI Agents: UX Research Method",
-      "date": "2026-07-30"
-    },
-    {
       "cluster": "Product Discovery — experiment design & concept validation",
       "url": "https://blog.glasgow.works/blog/concept-testing",
       "slug": "concept-testing",
@@ -435,13 +421,6 @@
       "slug": "how-b2b-buyers-use-ai-to-research-vendors",
       "title": "How B2B Buyers Use AI to Research & Shortlist Vendors",
       "date": "2026-08-01"
-    },
-    {
-      "cluster": "UX Research Methods — testing agentic/AI products (new emerging subtopic)",
-      "url": "https://blog.glasgow.works/blog/ux-research-for-ai-agents",
-      "slug": "ux-research-for-ai-agents",
-      "title": "UX Research for AI Agents: A Testing Playbook",
-      "date": "2026-08-02"
     },
     {
       "cluster": "participant recruitment & panels / quality guardrails",
