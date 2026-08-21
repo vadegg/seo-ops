@@ -299,13 +299,18 @@ def step_uniqueness(ctx: StepContext) -> None:
     """#37 Deterministic near-duplicate guard between Editor and Assembler.
 
     Internal MinHash similarity of the edited body against already-published
-    posts (topic_history bodies). Advisory only: above-threshold logs a WARN
+    posts (bodies read from the blog clone, see ``published_corpus``).
+    Advisory only: above-threshold logs a WARN
     (which feeds the degradation summary + fleet report) but NEVER blocks
     publication. The score is persisted to 05b for telemetry/resume."""
     from pipeline import uniqueness as U
 
     body = ctx.store.read_text(A.EDITOR_MD)
-    corpus = U.published_corpus(ctx.cfg.backlog_dir / "topic_history.json")
+    corpus = U.published_corpus(
+        ctx.cfg.backlog_dir / "topic_history.json",
+        blog_content_dir=(ctx.cfg.runs_dir / "_blog_repo"
+                          / ctx.cfg.blog_posts_dir),
+        exclude_prefix=f"{ctx.run_date}-")
     score, match = U.best_match(body, corpus)
     threshold = float(getattr(ctx.cfg, "uniqueness_threshold",
                               U.DEFAULT_THRESHOLD))
@@ -321,7 +326,14 @@ def step_uniqueness(ctx: StepContext) -> None:
     ctx.store.write_json(A.UNIQUENESS, result)
 
     if ctx.logger:
-        if score >= threshold:
+        if not corpus:
+            # An empty corpus scores 0.0 for everything, i.e. the guard is
+            # silently off — exactly how it sat idle for months. Say so.
+            ctx.logger.warning(
+                "uniqueness: corpus is empty (no published bodies under %s) "
+                "— duplicate detection is INACTIVE this run",
+                ctx.cfg.runs_dir / "_blog_repo" / ctx.cfg.blog_posts_dir)
+        elif score >= threshold:
             # WARN so the run-log degradation summary + run report surface it;
             # not an ERROR — a near-duplicate is a review flag, not a failure.
             ctx.logger.warning(

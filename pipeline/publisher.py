@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from clients import indexnow
+from pipeline.dedupe import kw_tokens as _kw_tokens, near_duplicate as _kw_near_duplicate
 from clients.retry import with_backoff
 
 
@@ -40,36 +41,53 @@ def _reconcile_keyword_backlog(path: Path, *, candidates: list, surplus: list,
     prune it: drop already-published and duplicates, drop score < floor, keep
     the top `cap` by score. Self-maintaining — runs after every real publish."""
     data = json.loads(path.read_text(encoding="utf-8"))
-    pub_kw = published_keyword.strip().lower()
+    pub_tokens = _kw_tokens(published_keyword)
 
     entries: dict[str, dict] = {}
-    for e in data.get("candidates", []):
-        kw = (e.get("keyword") or "").strip()
-        if kw:
-            entries[kw.lower()] = {"keyword": kw, "score": _norm_score(e.get("score")),
-                                   "date": e.get("date") or run_date}
 
-    incoming = [c for c in candidates
-                if (c.get("keyword") or "").strip().lower() != pub_kw] + list(surplus)
-    added = 0
-    for item in incoming:
+    def absorb(item: dict, *, default_date: str) -> bool:
+        """Fold one keyword into the reserve. Returns True if it is genuinely
+        new; a near-duplicate only lifts the score of the entry it matches."""
         kw = (item.get("keyword") or "").strip()
         if not kw:
-            continue
-        key = kw.lower()
+            return False
+        toks = _kw_tokens(kw)
+        key = " ".join(sorted(toks)) or kw.lower()
         score = _norm_score(item.get("score"))
-        if key in entries:
-            entries[key]["score"] = max(entries[key]["score"], score)
-        else:
-            entries[key] = {"keyword": kw, "score": score, "date": run_date}
+        held = entries.get(key)
+        if held is None:
+            for other in entries.values():
+                if _kw_near_duplicate(toks, other["_tokens"]):
+                    other["score"] = max(other["score"], score)
+                    return False
+            entries[key] = {"keyword": kw, "score": score,
+                            "date": item.get("date") or default_date,
+                            "_tokens": toks}
+            return True
+        held["score"] = max(held["score"], score)
+        return False
+
+    for e in data.get("candidates", []):
+        absorb(e, default_date=e.get("date") or run_date)
+
+    added = 0
+    incoming = [c for c in candidates
+                if not _kw_near_duplicate(_kw_tokens(c.get("keyword")),
+                                          pub_tokens)] + list(surplus)
+    for item in incoming:
+        if absorb(item, default_date=run_date):
             added += 1
 
-    kept = [e for key, e in entries.items()
-            if key not in published_set and e["score"] >= floor]
+    published_tokens = [t for t in (_kw_tokens(k) for k in published_set) if t]
+    kept = [e for e in entries.values()
+            if e["score"] >= floor
+            and not any(_kw_near_duplicate(e["_tokens"], p)
+                        for p in published_tokens)]
     kept.sort(key=lambda e: e["score"], reverse=True)
     pruned = len(entries) - len(kept[:cap])
 
-    data["candidates"] = kept[:cap]
+    data["candidates"] = [{k: v for k, v in e.items() if k != "_tokens"}
+                          for e in kept[:cap]]
     data["updated"] = run_date
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False),
                     encoding="utf-8")

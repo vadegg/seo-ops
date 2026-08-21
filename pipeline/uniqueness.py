@@ -108,25 +108,63 @@ def best_match(body: str, corpus: list[dict], *,
     return (best_score, best_entry) if best_entry is not None else (0.0, None)
 
 
-def published_corpus(topic_history_path: Path) -> list[dict]:
-    """Published posts that carry a body, read from topic_history.json.
+_SLUG_LINE = re.compile(r"^slug:\s*[\"']?([^\"'\n]+)", re.MULTILINE)
+_DATE_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2}-")
 
-    topic_history is the committed dedupe guard; entries may carry a ``body``
-    (e.g. backfilled from the live blog content collection). Entries without
-    a body are skipped — there is nothing to compare against. The live Astro
-    content collection is the richer source but is not present in this repo,
-    so the corpus is whatever published bodies are locally available; an
-    empty corpus simply yields a 0.0 score (no false positives)."""
+
+def _slug_of(path: Path, text: str) -> str:
+    head = text[:2000]
+    m = _SLUG_LINE.search(head)
+    if m:
+        return m.group(1).strip()
+    return _DATE_PREFIX.sub("", path.stem)
+
+
+def published_corpus(topic_history_path: Path,
+                     blog_content_dir: Path | None = None, *,
+                     exclude_prefix: str = "") -> list[dict]:
+    """Bodies of already-published posts, newest source first.
+
+    The real corpus is the cloned Astro content collection the Publisher
+    writes into (``runs/_blog_repo/src/content/blog``) — it is the only place
+    the full post bodies exist. ``topic_history.json`` entries *may* carry a
+    ``body`` (backfilled), and those are folded in as a fallback, but in
+    production they never do: reading history alone yielded ``corpus_size: 0``
+    on every run from 05.2026 to 08.2026, so the guard scored 0.0 and stayed
+    silent while the same topic shipped eight times.
+
+    ``exclude_prefix`` drops files whose name starts with it — used to keep
+    the current run's own post (``<run-date>-<slug>.md``) out of the corpus on
+    a re-run, where it would otherwise match itself at ~1.0.
+    """
+    out: list[dict] = []
+    seen: set[str] = set()
+
+    if blog_content_dir:
+        d = Path(blog_content_dir)
+        for f in sorted(d.glob("*.md")) if d.is_dir() else []:
+            if exclude_prefix and f.name.startswith(exclude_prefix):
+                continue
+            try:
+                text = f.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            body = _FRONTMATTER.sub("", text).strip()
+            if not body:
+                continue
+            slug = _slug_of(f, text)
+            seen.add(slug)
+            out.append({"slug": slug, "topic": "", "body": body})
+
     try:
         import json
         data = json.loads(Path(topic_history_path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return []
-    out: list[dict] = []
+        return out
     for entry in data.get("published", []):
         body = (entry.get("body") or "").strip()
-        if body:
-            out.append({"slug": entry.get("slug", ""),
-                        "topic": entry.get("topic", ""),
+        slug = entry.get("slug", "")
+        if body and slug not in seen:
+            out.append({"slug": slug, "topic": entry.get("topic", ""),
                         "body": body})
     return out

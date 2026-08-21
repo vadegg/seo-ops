@@ -1,32 +1,47 @@
 {
   "schema": "keyword_backlog/v1",
-  "updated": "2026-07-18",
+  "updated": "2026-08-21",
   "note": "Scored unused candidates (score 0..1 + date). Researcher reads here first (cheap reserve before paid APIs). After each publish the Publisher folds in the day's non-selected candidates + surplus, then prunes: drops already-published and below-floor entries, keeps the top-N by score.",
   "candidates": [
-    {
-      "keyword": "survey bots and fake responses in UX research",
-      "score": 0.67,
-      "date": "2026-06-30"
-    },
     {
       "keyword": "continuous discovery in product teams",
       "score": 0.67,
       "date": "2026-07-13"
     },
     {
-      "keyword": "UX research panel management",
+      "keyword": "how much does user research cost (pricing by method)",
       "score": 0.66,
-      "date": "2026-07-13"
+      "date": "2026-07-23"
     },
     {
-      "keyword": "first click testing ux",
+      "keyword": "AI notetaker consent and privacy for user research (2026 rules)",
       "score": 0.64,
-      "date": "2026-07-09"
+      "date": "2026-07-29"
     },
     {
       "keyword": "empathy mapping in UX research how to run",
       "score": 0.63,
       "date": "2026-07-13"
+    },
+    {
+      "keyword": "message testing: how to test value propositions with research",
+      "score": 0.63,
+      "date": "2026-07-23"
+    },
+    {
+      "keyword": "how to test voice AI and conversational UI (usability testing method)",
+      "score": 0.63,
+      "date": "2026-07-30"
+    },
+    {
+      "keyword": "AI product evals vs user testing: what each actually tells you",
+      "score": 0.63,
+      "date": "2026-07-29"
+    },
+    {
+      "keyword": "prompt research: how to find the questions buyers ask AI about your category",
+      "score": 0.63,
+      "date": "2026-08-07"
     },
     {
       "keyword": "how to present research findings to stakeholders",
@@ -44,6 +59,76 @@
       "date": "2026-07-13"
     },
     {
+      "keyword": "how to run a cognitive walkthrough in ux",
+      "score": 0.62,
+      "date": "2026-07-09"
+    },
+    {
+      "keyword": "concept testing: how to run a product concept test",
+      "score": 0.62,
+      "date": "2026-07-31"
+    },
+    {
+      "keyword": "brand tracking in the AI era: how to measure your AI share of voice",
+      "score": 0.62,
+      "date": "2026-08-02"
+    },
+    {
+      "keyword": "UK GDPR compliance for user research participants (consent and data retention)",
+      "score": 0.61,
+      "date": "2026-07-23"
+    },
+    {
+      "keyword": "how to build a UX research repository: taxonomy and atomic nuggets",
+      "score": 0.61,
+      "date": "2026-08-17"
+    },
+    {
+      "keyword": "how to build and manage a user research panel",
+      "score": 0.6,
+      "date": "2026-07-24"
+    },
+    {
+      "keyword": "mining sales calls and support tickets for customer research evidence",
+      "score": 0.6,
+      "date": "2026-07-23"
+    },
+    {
+      "keyword": "fake door (painted door) testing: validating demand before you build",
+      "score": 0.6,
+      "date": "2026-07-31"
+    },
+    {
+      "keyword": "predictive personas: when to trust AI-generated personas",
+      "score": 0.6,
+      "date": "2026-07-31"
+    },
+    {
+      "keyword": "conjoint analysis for pricing and feature-prioritisation decisions",
+      "score": 0.6,
+      "date": "2026-07-31"
+    },
+    {
+      "keyword": "bottom-up market sizing with customer interviews",
+      "score": 0.6,
+      "date": "2026-07-23"
+    },
+    {
+      "keyword": "AI-native research repository: querying past studies with AI (and MCP)",
+      "score": 0.6,
+      "date": "2026-07-30"
+    },
+    {
+      "keyword": "how AI has shrunk the B2B vendor shortlist (and what to research now)",
+      "score": 0.6,
+      "date": "2026-08-06"
+    },
+    {
+      "keyword": "customer advisory boards as a B2B research method: how to run one",
+      "score": 0.59,
+      "date": "2026-08-17"
+    },
+    {
       "keyword": "when to use qualitative vs quantitative research",
       "score": 0.58,
       "date": "2026-06-03"
@@ -54,9 +139,19 @@
       "date": "2026-06-03"
     },
     {
-      "keyword": "how to run a cognitive walkthrough in ux",
+      "keyword": "continuous discovery vs research projects: when to use each",
       "score": 0.58,
-      "date": "2026-07-09"
+      "date": "2026-07-25"
+    },
+    {
+      "keyword": "how to evaluate and choose AI user research tools (buyer's framework)",
+      "score": 0.58,
+      "date": "2026-07-30"
+    },
+    {
+      "keyword": "connecting AI to your research repository with MCP: querying past studies",
+      "score": 0.58,
+      "date": "2026-08-16"
     },
     {
       "keyword": "ux research stakeholder buy-in",
@@ -64,39 +159,14 @@
       "date": "2026-06-10"
     },
     {
-      "keyword": "participant incentives for user research",
-      "score": 0.56,
-      "date": "2026-07-09"
+      "keyword": "insight communities vs research panels: which to use",
+      "score": 0.57,
+      "date": "2026-07-24"
     },
     {
-      "keyword": "ux research repository best practices",
-      "score": 0.55,
-      "date": "2026-06-10"
-    },
-    {
-      "keyword": "research ops for small teams",
-      "score": 0.55,
-      "date": "2026-06-04"
-    },
-    {
-      "keyword": "how to run a focus group for product research",
-      "score": 0.53,
-      "date": "2026-06-10"
-    },
-    {
-      "keyword": "ux research for enterprise products",
-      "score": 0.53,
-      "date": "2026-07-09"
-    },
-    {
-      "keyword": "jobs to be done framework ux",
-      "score": 0.51,
-      "date": "2026-06-03"
-    },
-    {
-      "keyword": "how to write a research brief for ux projects",
-      "score": 0.46,
-      "date": "2026-06-04"
+      "keyword": "how to choose a user research agency: questions to ask before you hire",
+      "score": 0.57,
+      "date": "2026-08-17"
     }
   ]
 }

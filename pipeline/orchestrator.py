@@ -23,6 +23,7 @@ from pathlib import Path
 
 from logging_setup import escalation_log, get_agent_logger, setup_run_logging
 from pipeline import artifacts as A
+from pipeline import dedupe
 from pipeline import steps as S
 from pipeline.artifacts import ArtifactStore
 from pipeline.escalation import SCORE_THRESHOLD, EscalationLadder
@@ -145,6 +146,24 @@ def _research_and_select(ctx: StepContext, ladder: EscalationLadder):
         score = float(topic.get("score", 0.0))
         ctx.logger.info("strategist score=%.3f threshold=%.2f",
                         score, SCORE_THRESHOLD)
+
+        # A high score says nothing about whether we already covered this.
+        # The text-level guard (uniqueness) cannot help here: same-topic
+        # posts written from scratch share almost no phrasing. Compare the
+        # topic itself, and spend an escalation stage looking for another.
+        dup = dedupe.duplicate_of_published(topic, ctx.stores["topic_history"])
+        if dup:
+            where = dup.get("slug") or dup.get("topic") or "?"
+            if not ladder.at_guarantee() and ladder.escalate(
+                    f"topic duplicates published post '{where}'"):
+                continue
+            # Ceiling: the publish guarantee wins, but say it out loud so the
+            # run reads as degraded and the reserve gets looked at.
+            ctx.logger.warning(
+                "chosen topic duplicates published post '%s' (%s) — "
+                "escalation ceiling reached, publishing anyway; prune the "
+                "keyword reserve", where, dup.get("date", ""))
+            break
 
         if score >= SCORE_THRESHOLD:
             break

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 
+from . import history
 from .runner import run_json
 from .validation import validate_strategist
 
@@ -20,6 +21,10 @@ Scoring (0..1) must reflect: search/intent value, ranking feasibility,
 fit to an under-built content-map cluster, and freshness vs published
 history. Be calibrated and honest — a weak day should score low so the
 orchestrator can escalate. Do not inflate.
+
+A candidate that repeats or rephrases an already-published post is NOT a
+fresh topic: score it low (<= 0.3) even if its keyword looks strong, and
+name the post it duplicates in the rationale.
 
 Output ONE JSON object, no prose:
 {
@@ -44,8 +49,8 @@ def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
 ## content_map.md (pick a topic that fills an open [ ] subtopic)
 {content_map[:6000]}
 
-## Already published (avoid duplication)
-{json.dumps([p.get('topic') or p.get('keyword') for p in topic_history.get('published', [])], ensure_ascii=False)[:4000]}
+## Already published (avoid duplication AND rephrasing) — newest first
+{history.render_published(topic_history)}
 
 Choose one topic and return the JSON object now."""
 

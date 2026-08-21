@@ -218,7 +218,7 @@ def project(tmp_path) -> Config:
     # Static config copied as-is; the two volatile stores accumulate real
     # published data in the repo, so seed them empty for deterministic tests.
     for rel in ("backlog/seed_topics.md", "themes/content_map.md",
-                "themes/internal_links.json", "style_guide.md"):
+                "style_guide.md"):
         src = ROOT / rel
         dst = tmp_path / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -230,6 +230,34 @@ def project(tmp_path) -> Config:
     (tmp_path / "backlog" / "topic_history.json").write_text(
         json.dumps({"schema": "topic_history/v1", "published": []}),
         encoding="utf-8")
+    # internal_links is volatile too (the Publisher appends to it on every
+    # real run), so seed a small fixed corpus instead of copying the repo's:
+    # a copy grows with production state and silently changes what tests see
+    # (e.g. pushing the freshly published post out of llms.txt's top-50).
+    (tmp_path / "themes").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "themes" / "internal_links.json").write_text(json.dumps({
+        "schema": "internal_links/v1",
+        "hubs": {"ux-research-methods": "/blog/ux-research-methods",
+                 "research-operations": "/blog/research-operations",
+                 "product-discovery": "/blog/product-discovery"},
+        "posts": [
+            {"cluster": "user interviews & discussion guides",
+             "url": "https://blog.glasgow.works/blog/how-to-conduct-user-interviews",
+             "slug": "how-to-conduct-user-interviews",
+             "title": "How to Conduct User Interviews", "date": "2026-05-01"},
+            {"cluster": "usability testing (moderated vs unmoderated)",
+             "url": "https://blog.glasgow.works/blog/guerrilla-usability-testing",
+             "slug": "guerrilla-usability-testing",
+             "title": "Guerrilla Usability Testing", "date": "2026-05-02"},
+            {"cluster": "research operations",
+             "url": "https://blog.glasgow.works/blog/research-repository",
+             "slug": "research-repository",
+             "title": "Building a Research Repository", "date": "2026-05-03"},
+            {"cluster": "product discovery",
+             "url": "https://blog.glasgow.works/blog/continuous-discovery",
+             "slug": "continuous-discovery",
+             "title": "Continuous Discovery in Practice", "date": "2026-05-04"},
+        ]}), encoding="utf-8")
     evidence_dir = tmp_path / "evidence"
     evidence_dir.mkdir()
     (evidence_dir / "notes.md").write_text(
