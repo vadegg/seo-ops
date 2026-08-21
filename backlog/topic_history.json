@@ -561,6 +561,134 @@
       "url": "https://blog.glasgow.works/blog/how-to-analyse-survey-data-qualitatively",
       "date": "2026-07-18",
       "escalation_stage": 1
+    },
+    {
+      "topic": "Survey Bots and Fake Responses in UX Research: How to Detect and Prevent Data Contamination",
+      "keyword": "survey bots and fake responses in UX research",
+      "slug": "survey-bots-fake-responses-ux-research",
+      "url": "https://blog.glasgow.works/blog/survey-bots-fake-responses-ux-research",
+      "date": "2026-07-19",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "How to Detect Fake Survey Respondents in Research",
+      "keyword": "how to detect fake survey respondents in research",
+      "slug": "how-to-detect-fake-survey-respondents",
+      "url": "https://blog.glasgow.works/blog/how-to-detect-fake-survey-respondents",
+      "date": "2026-07-19",
+      "escalation_stage": 2
+    },
+    {
+      "topic": "UX Research Panel Management: How to Build and Maintain a Participant Panel for Continuous Research",
+      "keyword": "UX research panel management",
+      "slug": "ux-research-panel-management",
+      "url": "https://blog.glasgow.works/blog/ux-research-panel-management",
+      "date": "2026-07-20",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "First Click Testing in UX Research: How to Run It and What It Tells You",
+      "keyword": "first click testing ux",
+      "slug": "first-click-testing-ux-research",
+      "url": "https://blog.glasgow.works/blog/first-click-testing-ux-research",
+      "date": "2026-07-21",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Voice of Customer Programs for B2B SaaS: A Research-Ops Framework",
+      "keyword": "voice of customer program for b2b saas",
+      "slug": "voice-of-customer-program-b2b-saas",
+      "url": "https://blog.glasgow.works/blog/voice-of-customer-program-b2b-saas",
+      "date": "2026-07-22",
+      "escalation_stage": 2
+    },
+    {
+      "topic": "AI-Moderated Interviews vs Human Moderators: When Each One Holds Up",
+      "keyword": "AI-moderated interviews vs human-moderated research",
+      "slug": "ai-moderated-vs-human-moderated-research",
+      "url": "https://blog.glasgow.works/blog/ai-moderated-vs-human-moderated-research",
+      "date": "2026-07-23",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "UX Research for AI Agents: How to Test Agentic Features",
+      "keyword": "how to test agentic features",
+      "slug": "how-to-test-agentic-features",
+      "url": "https://blog.glasgow.works/blog/how-to-test-agentic-features",
+      "date": "2026-07-24",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "When to Outsource User Research: An Agency vs In-House Decision Framework",
+      "keyword": "when to outsource user research: agency vs in-house",
+      "slug": "when-to-outsource-user-research-agency-vs-in-house",
+      "url": "https://blog.glasgow.works/blog/when-to-outsource-user-research-agency-vs-in-house",
+      "date": "2026-07-25",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "AI-Moderated Interviews: When They Work and How to Run Them",
+      "keyword": "AI-moderated interviews",
+      "slug": "ai-moderated-interviews-when-how-to-run",
+      "url": "https://blog.glasgow.works/blog/ai-moderated-interviews-when-how-to-run",
+      "date": "2026-07-26",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "How to Validate AI-Generated Research Insights (and Catch Hallucinated Themes)",
+      "keyword": "validate AI-generated research insights",
+      "slug": "validate-ai-generated-research-insights",
+      "url": "https://blog.glasgow.works/blog/validate-ai-generated-research-insights",
+      "date": "2026-07-27",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "How to Test AI Agents: A UX Research Playbook for Agentic Features",
+      "keyword": "how to test AI agents",
+      "slug": "how-to-test-ai-agents",
+      "url": "https://blog.glasgow.works/blog/how-to-test-ai-agents",
+      "date": "2026-07-29",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "UX Research for AI Agents: How to Test Agentic Features",
+      "keyword": "how to test AI agents (UX research)",
+      "slug": "how-to-test-ai-agents-ux-research",
+      "url": "https://blog.glasgow.works/blog/how-to-test-ai-agents-ux-research",
+      "date": "2026-07-30",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "Concept Testing: How to Run a Product Concept Test That Produces a Decision",
+      "keyword": "concept testing",
+      "slug": "concept-testing",
+      "url": "https://blog.glasgow.works/blog/concept-testing",
+      "date": "2026-07-31",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "How B2B Buyers Use AI to Research and Shortlist Vendors (and What It Means for Your Research)",
+      "keyword": "how B2B buyers use AI to research vendors",
+      "slug": "how-b2b-buyers-use-ai-to-research-vendors",
+      "url": "https://blog.glasgow.works/blog/how-b2b-buyers-use-ai-to-research-vendors",
+      "date": "2026-08-01",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "UX Research for AI Agents: A Practical Playbook for Testing Agentic Features",
+      "keyword": "UX research for AI agents",
+      "slug": "ux-research-for-ai-agents",
+      "url": "https://blog.glasgow.works/blog/ux-research-for-ai-agents",
+      "date": "2026-08-02",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "How to Detect Fake and AI-Generated Participants in User Research",
+      "keyword": "detect fake and AI-generated participants in user research",
+      "slug": "detect-fake-ai-generated-participants-user-research",
+      "url": "https://blog.glasgow.works/blog/detect-fake-ai-generated-participants-user-research",
+      "date": "2026-08-21",
+      "escalation_stage": 3
     }
   ]
 }
