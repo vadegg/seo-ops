@@ -522,21 +522,44 @@ def build_run_report(cfg, run_dir, run_date, accumulator, usage_report, *,
     outliner = store.read_json(A.OUTLINER) if store.exists(A.OUTLINER) else {}
     strat = store.read_json(A.STRATEGIST) if store.exists(A.STRATEGIST) else {}
     title = outliner.get("title") or strat.get("topic") or slug
+    degr = list(getattr(accumulator, "degradations", []))
     # brief — одна тёплая фраза-итог: без URL/стадии/чисел (их место в artifacts/metrics),
     # это единственное, что видит человек в дайджесте флота.
     if status == "fail":
-        brief = "Статью выпустить не удалось — пайплайн оборвался; черновик и логи сохранены."
+        raw_error = str(error or "")
+        failed_steps = []
+        for degradation in degr:
+            agent = str(degradation.get("agent", ""))
+            if degradation.get("level") == "ERROR" and agent in STEP_NAMES and agent not in failed_steps:
+                failed_steps.append(agent)
+        for step_name in STEP_NAMES:
+            if re.search(rf"\b{re.escape(step_name)}\b", raw_error, re.IGNORECASE) and step_name not in failed_steps:
+                failed_steps.append(step_name)
+        target = (
+            "шаг " + ", ".join(f"«{name}»" for name in failed_steps)
+            if failed_steps else "пайплайн"
+        )
+        if any(mark in raw_error.lower() for mark in ("timeout", "timed out", "таймаут")):
+            reason = "ответ не пришёл до таймаута"
+        elif any(mark in raw_error.lower() for mark in ("rate limit", "quota", "usage limit", "лимит")):
+            reason = "исчерпан лимит модели"
+        elif any(mark in raw_error.lower() for mark in ("permission", "unauthorized", "forbidden", "token")):
+            reason = "доступ к внешнему сервису отвергнут"
+        elif raw_error:
+            reason = "ошибка пайплайна не распознана; диагностика сохранена в отчёте"
+        else:
+            reason = "пайплайн не сообщил причину"
+        brief = f"Статья не вышла — {target}: {reason}; черновик и логи сохранены."
     elif status == "skipped":
-        brief = "Новой статьи сегодня не публиковал — этот день уже закрыт."
+        brief = "День уже закрыт — новая статья не требовалась."
     elif slug:
-        brief = f"Сегодня в блог вышла новая статья — «{title}»."
+        brief = f"Новая статья — «{title}»."
     else:
-        brief = "Прогон завершён — публиковать сегодня было нечего."
+        brief = "Публикация не началась — готового материала не было."
 
     artifacts = [a for a in (url, pub.get("file", ""),
                              str(Path(run_dir) / "run.log")) if a]
 
-    degr = list(getattr(accumulator, "degradations", []))
     total = (usage_report or {}).get("total", {}) or {}
     metrics: dict = {
         "escalation_stage": stage,

@@ -105,6 +105,20 @@ def test_build_run_report_shape(project):
     assert rep["metrics"]["backlog_added"] == 1
     assert rep["metrics"]["escalation_stage"] == 2
     assert "run.log" in " ".join(rep["artifacts"])
+    assert rep["brief"] == "Новая статья — «s»."
+
+
+def test_failed_report_names_the_step_and_cause(project):
+    run_dir = project.runs_dir / "2026-05-19"
+    rep = build_run_report(
+        project, run_dir, "2026-05-19", SimpleNamespace(degradations=[]), {},
+        status="fail", started_at="2026-05-19T01:00:00+00:00",
+        finished_at="2026-05-19T01:05:00+00:00", run_id="rid",
+        trigger="cron", trigger_id="cron:2026-05-19",
+        error="RuntimeError: writer timed out")
+    assert "«writer»" in rep["brief"]
+    assert "таймаута" in rep["brief"]
+    assert "один из шагов" not in rep["brief"]
 
 
 # ---- orchestrator crash path -> status=fail + fatal Telegram ping ----------
