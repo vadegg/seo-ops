@@ -506,8 +506,10 @@ def build_run_report(cfg, run_dir, run_date, accumulator, usage_report, *,
 
     Reuses ``build_digest`` for the human ``detailed`` text and builds its own
     store + synthetic ctx, so it works even on the crash path (no StepContext
-    exists yet). Does NOT emit ``schema_version`` / ``zoo`` / ``duration_ms`` —
-    the fleet CLI fills those. ``metrics`` values are always numbers.
+    exists yet). Short summaries belong exclusively to shepherd, so animals
+    must not emit ``brief``. Does NOT emit ``schema_version`` / ``zoo`` /
+    ``duration_ms`` — the fleet CLI fills those. ``metrics`` values are always
+    numbers.
     """
     store = ArtifactStore(run_dir)
     pub = store.read_json(A.PUBLISHER) if store.exists(A.PUBLISHER) else {}
@@ -516,46 +518,8 @@ def build_run_report(cfg, run_dir, run_date, accumulator, usage_report, *,
 
     detailed = build_digest(ctx, accumulator, usage_report or {})[0]
 
-    slug = pub.get("slug", "")
     url = pub.get("url", "")
-    # Человеческий заголовок темы (не slug): из аутлайнера/стратега, иначе slug.
-    outliner = store.read_json(A.OUTLINER) if store.exists(A.OUTLINER) else {}
-    strat = store.read_json(A.STRATEGIST) if store.exists(A.STRATEGIST) else {}
-    title = outliner.get("title") or strat.get("topic") or slug
     degr = list(getattr(accumulator, "degradations", []))
-    # brief — одна тёплая фраза-итог: без URL/стадии/чисел (их место в artifacts/metrics),
-    # это единственное, что видит человек в дайджесте флота.
-    if status == "fail":
-        raw_error = str(error or "")
-        failed_steps = []
-        for degradation in degr:
-            agent = str(degradation.get("agent", ""))
-            if degradation.get("level") == "ERROR" and agent in STEP_NAMES and agent not in failed_steps:
-                failed_steps.append(agent)
-        for step_name in STEP_NAMES:
-            if re.search(rf"\b{re.escape(step_name)}\b", raw_error, re.IGNORECASE) and step_name not in failed_steps:
-                failed_steps.append(step_name)
-        target = (
-            "шаг " + ", ".join(f"«{name}»" for name in failed_steps)
-            if failed_steps else "пайплайн"
-        )
-        if any(mark in raw_error.lower() for mark in ("timeout", "timed out", "таймаут")):
-            reason = "ответ не пришёл до таймаута"
-        elif any(mark in raw_error.lower() for mark in ("rate limit", "quota", "usage limit", "лимит")):
-            reason = "исчерпан лимит модели"
-        elif any(mark in raw_error.lower() for mark in ("permission", "unauthorized", "forbidden", "token")):
-            reason = "доступ к внешнему сервису отвергнут"
-        elif raw_error:
-            reason = "ошибка пайплайна не распознана; диагностика сохранена в отчёте"
-        else:
-            reason = "пайплайн не сообщил причину"
-        brief = f"Статья не вышла — {target}: {reason}; черновик и логи сохранены."
-    elif status == "skipped":
-        brief = "День уже закрыт — новая статья не требовалась."
-    elif slug:
-        brief = f"Новая статья — «{title}»."
-    else:
-        brief = "Публикация не началась — готового материала не было."
 
     artifacts = [a for a in (url, pub.get("file", ""),
                              str(Path(run_dir) / "run.log")) if a]
@@ -592,7 +556,6 @@ def build_run_report(cfg, run_dir, run_date, accumulator, usage_report, *,
         "finished_at": finished_at,
         "status": status,
         "error": error,
-        "brief": brief,
         "detailed": detailed,
         "artifacts": artifacts,
         "metrics": metrics,
