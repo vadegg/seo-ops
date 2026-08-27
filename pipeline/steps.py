@@ -524,8 +524,10 @@ def build_run_report(cfg, run_dir, run_date, accumulator, usage_report, *,
 
     Reuses ``build_digest`` for the human ``detailed`` text and builds its own
     store + synthetic ctx, so it works even on the crash path (no StepContext
-    exists yet). Does NOT emit ``schema_version`` / ``zoo`` / ``duration_ms`` —
-    the fleet CLI fills those. ``metrics`` values are always numbers.
+    exists yet). Short summaries belong exclusively to shepherd, so animals
+    must not emit ``brief``. Does NOT emit ``schema_version`` / ``zoo`` /
+    ``duration_ms`` — the fleet CLI fills those. ``metrics`` values are always
+    numbers.
     """
     store = ArtifactStore(run_dir)
     pub = store.read_json(A.PUBLISHER) if store.exists(A.PUBLISHER) else {}
@@ -534,22 +536,7 @@ def build_run_report(cfg, run_dir, run_date, accumulator, usage_report, *,
 
     detailed = build_digest(ctx, accumulator, usage_report or {})[0]
 
-    slug = pub.get("slug", "")
     url = pub.get("url", "")
-    # Человеческий заголовок темы (не slug): из аутлайнера/стратега, иначе slug.
-    outliner = store.read_json(A.OUTLINER) if store.exists(A.OUTLINER) else {}
-    strat = store.read_json(A.STRATEGIST) if store.exists(A.STRATEGIST) else {}
-    title = outliner.get("title") or strat.get("topic") or slug
-    # brief — одна тёплая фраза-итог: без URL/стадии/чисел (их место в artifacts/metrics),
-    # это единственное, что видит человек в дайджесте флота.
-    if status == "fail":
-        brief = "Статью выпустить не удалось — пайплайн оборвался; черновик и логи сохранены."
-    elif status == "skipped":
-        brief = "Новой статьи сегодня не публиковал — этот день уже закрыт."
-    elif slug:
-        brief = f"Сегодня в блог вышла новая статья — «{title}»."
-    else:
-        brief = "Прогон завершён — публиковать сегодня было нечего."
 
     artifacts = [a for a in (url, pub.get("file", ""),
                              str(Path(run_dir) / "run.log")) if a]
@@ -587,7 +574,6 @@ def build_run_report(cfg, run_dir, run_date, accumulator, usage_report, *,
         "finished_at": finished_at,
         "status": status,
         "error": error,
-        "brief": brief,
         "detailed": detailed,
         "artifacts": artifacts,
         "metrics": metrics,
