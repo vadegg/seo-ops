@@ -1,11 +1,10 @@
-"""Escalation ladder — escalate instead of skipping a day.
+"""Escalation ladder — try alternative sources before rejecting a topic.
 
 Researcher+Strategist form a ladder of attempts. The Strategist scores
 the chosen topic; below threshold -> next stage. Every transition is
 logged to escalation.log and surfaced as a WARN (run-log summary + the
 end-of-run fleet report), not per-event. Stage 4 (evergreen seed list) is
-API-independent and always yields a publishable topic, so a post ships
-every day no matter what.
+API-independent. Every stage must still pass the same quality threshold.
 """
 
 from __future__ import annotations
@@ -37,7 +36,7 @@ STAGES: dict[int, StageSpec] = {
                  "sonnet", True, True, True, False),
     3: StageSpec(3, "Full web-search gap analysis + competitors, reframe intent",
                  "opus", False, False, True, False),
-    4: StageSpec(4, "Evergreen seed list minus topic_history (guarantee)",
+    4: StageSpec(4, "Evergreen seed list minus topic_history (final attempt)",
                  "opus", False, False, False, True),
 }
 
@@ -71,16 +70,14 @@ class EscalationLadder:
             self._log.info("escalation %s", msg)
 
     def escalate(self, reason: str) -> bool:
-        """Advance one stage. Returns False if already at the guarantee
-        ceiling (caller must then accept the best available topic).
+        """Advance one stage. False at the ceiling means the caller must
+        reject the unqualified topic and retain its artifacts for review.
         """
         if self.stage >= self.max_stage:
-            self._record(self.stage, reason=f"at ceiling, accepting best: {reason}")
-            # Accepting a below-threshold topic IS a degradation — surface it
-            # as a WARN so the run report doesn't label a forced day as clean.
+            self._record(self.stage, reason=f"at ceiling, rejected: {reason}")
             if self._log:
                 self._log.warning("escalation ceiling reached (stage %d) — "
-                                  "accepting best available: %s",
+                                  "no qualified candidate: %s",
                                   self.stage, reason)
             return False
         self.stage += 1

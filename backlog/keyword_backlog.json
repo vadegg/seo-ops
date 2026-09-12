@@ -1,6 +1,6 @@
 {
   "schema": "keyword_backlog/v1",
-  "updated": "2026-08-21",
+  "updated": "2026-09-10",
   "note": "Scored unused candidates (score 0..1 + date). Researcher reads here first (cheap reserve before paid APIs). After each publish the Publisher folds in the day's non-selected candidates + surplus, then prunes: drops already-published and below-floor entries, keeps the top-N by score.",
   "candidates": [
     {
@@ -9,29 +9,14 @@
       "date": "2026-07-13"
     },
     {
-      "keyword": "how much does user research cost (pricing by method)",
-      "score": 0.66,
-      "date": "2026-07-23"
-    },
-    {
-      "keyword": "AI notetaker consent and privacy for user research (2026 rules)",
+      "keyword": "win-loss analysis for B2B: how to run win-loss interviews",
       "score": 0.64,
-      "date": "2026-07-29"
-    },
-    {
-      "keyword": "empathy mapping in UX research how to run",
-      "score": 0.63,
-      "date": "2026-07-13"
+      "date": "2026-08-28"
     },
     {
       "keyword": "message testing: how to test value propositions with research",
       "score": 0.63,
       "date": "2026-07-23"
-    },
-    {
-      "keyword": "how to test voice AI and conversational UI (usability testing method)",
-      "score": 0.63,
-      "date": "2026-07-30"
     },
     {
       "keyword": "AI product evals vs user testing: what each actually tells you",
@@ -44,24 +29,19 @@
       "date": "2026-08-07"
     },
     {
+      "keyword": "continuous discovery interviews on a two-week cycle",
+      "score": 0.63,
+      "date": "2026-08-27"
+    },
+    {
       "keyword": "how to present research findings to stakeholders",
       "score": 0.62,
       "date": "2026-06-10"
     },
     {
-      "keyword": "UX benchmarking how to run a benchmarking study",
-      "score": 0.62,
-      "date": "2026-06-30"
-    },
-    {
       "keyword": "UX research storytelling for stakeholders",
       "score": 0.62,
       "date": "2026-07-13"
-    },
-    {
-      "keyword": "how to run a cognitive walkthrough in ux",
-      "score": 0.62,
-      "date": "2026-07-09"
     },
     {
       "keyword": "concept testing: how to run a product concept test",
@@ -75,8 +55,13 @@
     },
     {
       "keyword": "UK GDPR compliance for user research participants (consent and data retention)",
-      "score": 0.61,
+      "score": 0.62,
       "date": "2026-07-23"
+    },
+    {
+      "keyword": "price sensitivity research: Van Westendorp vs Gabor-Granger",
+      "score": 0.62,
+      "date": "2026-08-28"
     },
     {
       "keyword": "how to build a UX research repository: taxonomy and atomic nuggets",
@@ -104,11 +89,6 @@
       "date": "2026-07-31"
     },
     {
-      "keyword": "conjoint analysis for pricing and feature-prioritisation decisions",
-      "score": 0.6,
-      "date": "2026-07-31"
-    },
-    {
       "keyword": "bottom-up market sizing with customer interviews",
       "score": 0.6,
       "date": "2026-07-23"
@@ -122,6 +102,26 @@
       "keyword": "how AI has shrunk the B2B vendor shortlist (and what to research now)",
       "score": 0.6,
       "date": "2026-08-06"
+    },
+    {
+      "keyword": "sample size for qualitative research: how many interviews is enough",
+      "score": 0.6,
+      "date": "2026-08-27"
+    },
+    {
+      "keyword": "churn research for SaaS: interviewing customers who left",
+      "score": 0.6,
+      "date": "2026-08-27"
+    },
+    {
+      "keyword": "card sorting vs tree testing for information architecture",
+      "score": 0.6,
+      "date": "2026-08-27"
+    },
+    {
+      "keyword": "Kano model for feature prioritisation",
+      "score": 0.6,
+      "date": "2026-09-05"
     },
     {
       "keyword": "customer advisory boards as a B2B research method: how to run one",
@@ -144,14 +144,29 @@
       "date": "2026-07-25"
     },
     {
-      "keyword": "how to evaluate and choose AI user research tools (buyer's framework)",
-      "score": 0.58,
-      "date": "2026-07-30"
-    },
-    {
       "keyword": "connecting AI to your research repository with MCP: querying past studies",
       "score": 0.58,
       "date": "2026-08-16"
+    },
+    {
+      "keyword": "synthetic respondents in market research: benefits, risks, and how to validate against real data",
+      "score": 0.58,
+      "date": "2026-08-28"
+    },
+    {
+      "keyword": "stakeholder interviews to scope a user research project",
+      "score": 0.58,
+      "date": "2026-09-05"
+    },
+    {
+      "keyword": "moderated vs unmoderated usability testing: when each wins",
+      "score": 0.58,
+      "date": "2026-08-27"
+    },
+    {
+      "keyword": "fake door testing",
+      "score": 0.58,
+      "date": "2026-09-09"
     },
     {
       "keyword": "ux research stakeholder buy-in",
@@ -164,9 +179,74 @@
       "date": "2026-07-24"
     },
     {
-      "keyword": "how to choose a user research agency: questions to ask before you hire",
-      "score": 0.57,
-      "date": "2026-08-17"
+      "keyword": "contextual inquiry: how to run field research",
+      "score": 0.56,
+      "date": "2026-09-05"
+    },
+    {
+      "keyword": "diary studies: when longitudinal data beats a one-off session",
+      "score": 0.55,
+      "date": "2026-08-27"
+    },
+    {
+      "keyword": "affinity mapping that survives stakeholder review",
+      "score": 0.55,
+      "date": "2026-08-27"
+    },
+    {
+      "keyword": "recruiting hard-to-reach B2B participants ethically",
+      "score": 0.55,
+      "date": "2026-08-27"
+    },
+    {
+      "keyword": "calculating the ROI of a user research study",
+      "score": 0.55,
+      "date": "2026-09-04"
+    },
+    {
+      "keyword": "how to write unbiased survey questions",
+      "score": 0.55,
+      "date": "2026-09-04"
+    },
+    {
+      "keyword": "how to design a user interview discussion guide",
+      "score": 0.55,
+      "date": "2026-09-09"
+    },
+    {
+      "keyword": "user research participant incentives: how much to pay (by method and audience)",
+      "score": 0.54,
+      "date": "2026-08-28"
+    },
+    {
+      "keyword": "ResearchOps: turning ad-hoc studies into a repeatable system",
+      "score": 0.54,
+      "date": "2026-09-04"
+    },
+    {
+      "keyword": "assumption mapping before you build the prototype",
+      "score": 0.54,
+      "date": "2026-09-04"
+    },
+    {
+      "keyword": "triangulating qualitative and quantitative research findings",
+      "score": 0.54,
+      "date": "2026-09-09"
+    },
+    {
+      "keyword": "top-task analysis for prioritising what to research",
+      "score": 0.53,
+      "date": "2026-08-27"
+    },
+    {
+      "keyword": "opportunity solution trees for a single product bet",
+      "score": 0.53,
+      "date": "2026-09-04"
+    },
+    {
+      "keyword": "quantifying qualitative data: tagging schemes that scale",
+      "score": 0.52,
+      "date": "2026-08-27"
     }
   ]
 }

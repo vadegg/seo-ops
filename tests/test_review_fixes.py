@@ -22,16 +22,17 @@ class EditorGarbageRunner(FakeRunner):
 
 
 # ---- #1 editor never abandons the day -------------------------------------
-def test_editor_clienterror_still_publishes(project, deps_factory):
+def test_editor_clienterror_preserves_draft_but_never_publishes(project, deps_factory):
     deps = deps_factory(runner=EditorGarbageRunner(strategist_score=0.9))
     rc = run_pipeline(project, run_date="2026-05-19", dry_run=True, deps=deps)
-    assert rc == 0                                   # day not abandoned
+    assert rc == 1
     s = ArtifactStore(project.runs_dir / "2026-05-19")
-    assert s.exists(A.EDITOR_MD)                     # best draft shipped
+    assert not s.exists(A.EDITOR_MD)
+    assert not s.exists(A.PUBLISHER)
     crit = s.read_json(A.EDITOR_CRITIQUE)
     assert crit.get("forced_final") is True
     # the editor body fell back to the writer's draft
-    assert s.read_text(A.EDITOR_MD) == s.read_text(A.WRITER)
+    assert s.read_text("05-editor.rejected.md") == s.read_text(A.WRITER)
 
 
 # ---- #2 isolated/resume runs write an internal report (no fleet submit) ----

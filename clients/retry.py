@@ -12,6 +12,14 @@ T = TypeVar("T")
 class ClientError(RuntimeError):
     """External client failed after exhausting retries."""
 
+    retryable = True
+
+
+class PermanentClientError(ClientError):
+    """Credentials, billing or an invalid request need intervention."""
+
+    retryable = False
+
 
 def with_backoff(
     fn: Callable[[], T],
@@ -21,7 +29,7 @@ def with_backoff(
     max_delay: float = 30.0,
     logger=None,
     label: str = "request",
-    sleep: Callable[[float], None] = time.sleep,
+    sleep: Callable[[float], None] | None = None,
 ) -> T:
     """Call ``fn`` with exponential backoff + jitter.
 
@@ -30,6 +38,7 @@ def with_backoff(
     stage instead of crashing the run.
     """
     last: Exception | None = None
+    sleep = sleep or time.sleep
     for attempt in range(1, attempts + 1):
         try:
             return fn()
@@ -39,6 +48,8 @@ def with_backoff(
                 logger.warning(
                     "%s failed (attempt %d/%d): %s", label, attempt, attempts, exc
                 )
+            if isinstance(exc, PermanentClientError):
+                raise
             if attempt == attempts:
                 break
             delay = min(max_delay, base_delay * (2 ** (attempt - 1)))

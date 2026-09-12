@@ -2,7 +2,7 @@
 
 Every agent goes through AgentRunner.run. Control flow, model selection and
 artifact passing stay in the orchestrator, not in the agents. The concrete
-runner shells out to the ``claude`` CLI (Claude Code, headless ``-p`` mode) —
+runner shells out to the ``codex`` CLI (non-interactive ``exec`` mode) —
 this module is the only place that knows the LLM backend.
 """
 
@@ -87,118 +87,128 @@ def run_json(runner, *, name: str, system: str, user: str, model: str,
             ) from second
 
 
-def _extract_usage(name: str, model: str, data: dict) -> dict:
-    """Fold the CLI's usage block into one accounting record.
-
-    The ``claude`` CLI reports usage two ways: a top-level ``usage`` object
-    and a per-model ``modelUsage`` map keyed by the resolved model id, which
-    also carries ``costUSD`` (cache-aware, authoritative). Prefer ``modelUsage``
-    — summing across entries — and fall back to ``usage`` + ``total_cost_usd``.
-    The ``usd`` field lets ``pipeline.usage.summarize`` skip the local price
-    table entirely (#5).
-    """
-    model_usage = data.get("modelUsage") or {}
-    if model_usage:
-        in_tok = sum(int(v.get("inputTokens", 0) or 0) for v in model_usage.values())
-        out_tok = sum(int(v.get("outputTokens", 0) or 0) for v in model_usage.values())
-        usd = sum(float(v.get("costUSD", 0.0) or 0.0) for v in model_usage.values())
-        rec_model = next(iter(model_usage)) if len(model_usage) == 1 else model
-    else:
-        u = data.get("usage") or {}
-        in_tok = int(u.get("input_tokens", 0) or 0)
-        out_tok = int(u.get("output_tokens", 0) or 0)
-        usd = float(data.get("total_cost_usd", 0.0) or 0.0)
-        rec_model = model
-    return {"agent": name, "model": rec_model,
-            "input_tokens": in_tok, "output_tokens": out_tok,
-            "usd": round(usd, 6)}
-
-
 class CLIAgentRunner:
-    """Runner backed by the ``claude`` CLI (Claude Code, headless ``-p`` mode).
+    """Runner backed by ``codex exec`` and the user's ChatGPT/Codex login.
 
-    Each ``run`` is a stateless subprocess authenticated by the CLI's own
-    logged-in **subscription** session (Claude Max/Team) — no API key.
-    ``--system-prompt`` fully replaces Claude Code's default system prompt
-    (bare-agent mode); ``--safe-mode`` disables CLAUDE.md/hooks/plugins/MCP for
-    reproducible calls while keeping normal (subscription) auth. To guarantee
-    the subscription is used, ``ANTHROPIC_API_KEY`` is stripped from the child
-    environment so a stray key can't silently switch the run to API billing.
-    Web search maps to the CLI's built-in ``WebSearch`` tool; with no tools the
-    model just generates text. The CLI runs any agentic tool loop internally,
-    so this returns one usage record per call.
+    Calls are ephemeral and ignore personal/project configuration. Local shell
+    tools are disabled; the only optional capability is hosted web search.
+    Ambient OpenAI API credentials are stripped so authentication can only come
+    from the cached subscription login. Codex emits JSONL events, folded here
+    into the existing text response and token accounting contract.
     """
 
-    def __init__(self, claude_bin: str = "claude", timeout: int = 600):
-        self._bin = claude_bin
+    def __init__(self, codex_bin: str = "codex", timeout: int = 600,
+                 attempts: int = 3):
+        self._bin = codex_bin
         self._timeout = timeout
+        self._attempts = attempts
         # One token/cost record per agent call, accumulated across the run (#5).
         self.records: list[dict] = []
 
     def run(self, *, name: str, system: str, user: str, model: str,
             tools: list[str], max_tokens: int, logger) -> str:
-        from clients.retry import ClientError
+        from clients.retry import with_backoff
+
+        return with_backoff(
+            lambda: self._run_once(name=name, system=system, user=user,
+                                  model=model, tools=tools,
+                                  max_tokens=max_tokens, logger=logger),
+            attempts=self._attempts, logger=logger, label=f"agent {name}")
+
+    def _run_once(self, *, name: str, system: str, user: str, model: str,
+                  tools: list[str], max_tokens: int, logger) -> str:
+        from clients.retry import ClientError, PermanentClientError
 
         # max_tokens has no CLI equivalent (no --max-tokens flag); kept in the
         # signature for the AgentRunner contract but not enforced here.
+        unsupported = sorted(set(tools) - {"WebSearch"})
+        if unsupported:
+            raise PermanentClientError(f"agent {name}: unsupported Codex tools: {', '.join(unsupported)}")
         cmd = [
-            self._bin, "-p", user,
-            "--model", model,
-            "--output-format", "json",
-            "--system-prompt", system,
-            "--safe-mode",
-            "--no-session-persistence",
+            self._bin, "exec", "--model", model, "--ephemeral",
+            "--skip-git-repo-check", "--sandbox", "read-only",
+            "--ignore-user-config", "--ignore-rules",
+            "--disable", "apps", "--disable", "plugins",
+            "--disable", "multi_agent", "--disable", "browser_use",
+            "--disable", "computer_use", "--disable", "image_generation",
+            "--disable", "shell_tool", "--disable", "unified_exec",
+            "--config",
+            f'web_search={json.dumps("live" if "WebSearch" in tools else "disabled")}',
+            "--json", "-",
         ]
-        if "WebSearch" in tools:
-            # Built-in WebSearch is read-only; bypass keeps headless -p from
-            # blocking on a permission prompt.
-            cmd += ["--tools", "WebSearch", "--permission-mode", "bypassPermissions"]
-        else:
-            cmd += ["--tools", ""]
 
-        # Force the CLI's subscription/OAuth login: drop any ambient API key so
-        # it can't take precedence and bill per-token instead.
         env = os.environ.copy()
-        env.pop("ANTHROPIC_API_KEY", None)
+        for key in ("OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN"):
+            env.pop(key, None)
 
         if logger:
             logger.info("agent %s -> model=%s tools=%s", name, model, tools)
 
         try:
             proc = subprocess.run(
-                cmd, capture_output=True, text=True, env=env,
+                cmd, input=f"{system}\n\n---\n\n{user}",
+                capture_output=True, text=True, env=env,
                 timeout=self._timeout,
             )
         except subprocess.TimeoutExpired as exc:
             raise ClientError(
-                f"agent {name}: claude CLI timed out after {self._timeout}s") from exc
+                f"agent {name}: Codex CLI timed out after {self._timeout}s") from exc
         except OSError as exc:  # binary missing / not executable
+            raise PermanentClientError(
+                f"agent {name}: could not spawn Codex CLI ({self._bin}): {exc}") from exc
+
+        events = []
+        invalid_lines = []
+        for line in proc.stdout.splitlines():
+            if not line.strip():
+                continue
+            try:
+                event = json.loads(line)
+                if isinstance(event, dict):
+                    events.append(event)
+                else:
+                    invalid_lines.append(line)
+            except ValueError:
+                invalid_lines.append(line)
+        failed = next((event for event in events if event.get("type") == "turn.failed"), None)
+        errors = [event.get("message", "") for event in events
+                  if event.get("type") == "error"]
+        if proc.returncode != 0 or failed:
+            reason = ((failed or {}).get("error") or {}).get("message", "")
+            reason = reason or "; ".join(filter(None, errors))
+            reason = reason or (proc.stderr or "").strip() or "no error details from CLI"
+            permanent = any(s in reason.lower() for s in (
+                "not logged in", "authentication", "refresh_token", "usage limit",
+                "quota exceeded", "invalid api key", "unsupported model",
+                "model is not supported", "unknown model", "unrecognized argument"))
+            error_type = PermanentClientError if permanent else ClientError
+            raise error_type(f"agent {name}: Codex CLI exited {proc.returncode}: {reason[:1500]}")
+        if invalid_lines:
             raise ClientError(
-                f"agent {name}: could not spawn claude CLI ({self._bin}): {exc}") from exc
-
-        if proc.returncode != 0:
+                f"agent {name}: Codex CLI returned non-JSONL output: "
+                f"{invalid_lines[0][:500]}")
+        completed = next((event for event in reversed(events) if event.get("type") == "turn.completed"), None)
+        if failed or not completed:
+            reason = (failed or {}).get("error", {}).get("message", "turn did not complete")
             raise ClientError(
-                f"agent {name}: claude CLI exited {proc.returncode}: "
-                f"{(proc.stderr or '').strip()[:500]}")
+                f"agent {name}: Codex CLI reported failure ({reason})")
 
-        try:
-            data = json.loads(proc.stdout)
-        except ValueError as exc:
-            raise ClientError(
-                f"agent {name}: claude CLI returned non-JSON output: "
-                f"{(proc.stdout or '').strip()[:500]}") from exc
-
-        if data.get("is_error") or data.get("subtype") != "success":
-            raise ClientError(
-                f"agent {name}: claude CLI reported failure "
-                f"(subtype={data.get('subtype')}, api_error_status="
-                f"{data.get('api_error_status')})")
-
-        self.records.append(_extract_usage(name, model, data))
-
-        out = (data.get("result") or "").strip()
+        usage = completed.get("usage") or {}
+        self.records.append({
+            "agent": name, "model": model,
+            "input_tokens": int(usage.get("input_tokens", 0) or 0),
+            "output_tokens": int(usage.get("output_tokens", 0) or 0),
+            "usd": 0.0,
+        })
+        messages = [
+            event.get("item", {}).get("text", "")
+            for event in events
+            if event.get("type") == "item.completed"
+            and event.get("item", {}).get("type") == "agent_message"
+        ]
+        out = (messages[-1] if messages else "").strip()
         if logger:
             logger.info("agent %s produced %d chars", name, len(out))
         if not out:
-            raise RuntimeError(f"agent {name} returned empty output")
+            raise ClientError(f"agent {name} returned empty output")
         return out

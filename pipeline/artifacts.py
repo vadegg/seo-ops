@@ -8,6 +8,8 @@ A step whose output artifact already exists is skipped (resume).
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from pathlib import Path
 
 # Canonical artifact names (spec pipeline table).
@@ -18,12 +20,29 @@ EVIDENCE = "03b-evidence.json"          # support artifact (Python-gathered)
 WRITER = "04-writer.draft.md"
 EDITOR_MD = "05-editor.edited.md"
 EDITOR_CRITIQUE = "05-editor.critique.json"
-UNIQUENESS = "05b-uniqueness.json"      # #37 near-duplicate score (advisory)
+UNIQUENESS = "05b-uniqueness.json"      # required near-duplicate check
 HUMANIZER = "05c-humanizer.md"          # de-AI'd body (#39); assembler input
 ASSEMBLER = "06-assembler.post.md"
 ASSEMBLER_META = "06-assembler.meta.json"   # slug info for the Publisher
 PUBLISHER = "07-publisher.status.json"
 RUN_REPORT = "report.json"              # whole-run summary (also sent to fleet)
+RESEARCH_CONTEXT = "00-research-context.json"
+
+
+def atomic_write(path: Path, text: str) -> Path:
+    """Replace a file only after its complete contents have been flushed."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(name, path)
+    finally:
+        Path(name).unlink(missing_ok=True)
+    return path
 
 
 class ArtifactStore:
@@ -40,17 +59,14 @@ class ArtifactStore:
 
     def write_json(self, name: str, obj) -> Path:
         p = self.path(name)
-        p.write_text(json.dumps(obj, indent=2, ensure_ascii=False),
-                     encoding="utf-8")
-        return p
+        return atomic_write(p, json.dumps(obj, indent=2, ensure_ascii=False))
 
     def read_json(self, name: str):
         return json.loads(self.path(name).read_text(encoding="utf-8"))
 
     def write_text(self, name: str, text: str) -> Path:
         p = self.path(name)
-        p.write_text(text, encoding="utf-8")
-        return p
+        return atomic_write(p, text)
 
     def read_text(self, name: str) -> str:
         return self.path(name).read_text(encoding="utf-8")

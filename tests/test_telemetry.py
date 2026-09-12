@@ -64,7 +64,7 @@ def test_degraded_run_writes_one_report(project, deps_factory):
     run_pipeline(project, run_date="2026-05-19", dry_run=True, deps=deps)
     assert len(deps.fleet.reports) == 1              # one consolidated report
     report = deps.fleet.reports[0]
-    assert report["status"] == "ok"
+    assert report["status"] == "fail"
     assert "degraded to escalation level" in report["detailed"]  # degradations
     assert report["metrics"]["output_tokens"] > 0    # article cost (#5)
     assert report["metrics"]["degradations"] > 0

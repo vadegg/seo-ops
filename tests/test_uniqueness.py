@@ -148,7 +148,7 @@ def test_novel_post_does_not_warn(project, deps_factory):
             assert parts[2] not in {"WARNING", "ERROR"}, line
 
 
-def test_step_never_blocks_pipeline(project, deps_factory):
+def test_duplicate_body_blocks_assembly_and_publication(project, deps_factory):
     # Even an exact duplicate still lets humanizer+assembler+publisher run.
     th_path = project.backlog_dir / "topic_history.json"
     th_path.write_text(json.dumps({"published": [
@@ -160,10 +160,10 @@ def test_step_never_blocks_pipeline(project, deps_factory):
         project, run_date="2026-05-19",
         step_names=["uniqueness", "humanizer", "assembler", "publisher"],
         dry_run=True, deps=deps)
-    assert rc == 0
+    assert rc == 1
     store = ArtifactStore(project.runs_dir / "2026-05-19")
-    assert store.exists(A.ASSEMBLER)
-    assert store.exists(A.PUBLISHER)
+    assert not store.exists(A.ASSEMBLER)
+    assert not store.exists(A.PUBLISHER)
 
 
 # ---- corpus source: the blog clone, not topic_history ----------------------

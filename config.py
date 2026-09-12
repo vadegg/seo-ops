@@ -35,13 +35,11 @@ def _load_dotenv(path: Path) -> None:
 
 
 # Required secret/identity variables. (name -> human description)
-# Note: no ANTHROPIC_API_KEY — the `claude` CLI authenticates via its own
-# logged-in subscription session, not an API key (see agents/runner.py).
+# Note: no OPENAI_API_KEY — the `codex` CLI authenticates via its own cached
+# ChatGPT subscription session, not an API key (see agents/runner.py).
 _REQUIRED = {
     "GSC_SERVICE_ACCOUNT_JSON": "path to GSC service-account JSON",
     "GSC_SITE_URL": "Search Console property URL",
-    "DATAFORSEO_LOGIN": "DataForSEO login",
-    "DATAFORSEO_PASSWORD": "DataForSEO password",
     "TELEGRAM_BOT_TOKEN": "Telegram bot token",
     "TELEGRAM_CHAT_ID": "Telegram chat/channel id",
     "BLOG_REPO_URL": "blog git repo URL",
@@ -75,10 +73,12 @@ class Config:
     # tunables
     max_stage: int = 4
     agent_max_tokens: int = 8000
-    model_sonnet: str = "claude-sonnet-5"
-    model_opus: str = "claude-opus-4-8"
-    claude_bin: str = "claude"    # abs path for cron's trimmed PATH (cf. node_bin)
-    claude_timeout: int = 600     # per-call subprocess timeout, seconds
+    # Historical field names remain tier aliases to avoid rewriting every stage.
+    model_sonnet: str = "gpt-5.6-terra"
+    model_opus: str = "gpt-5.6-sol"
+    codex_bin: str = "codex"      # abs path for cron's trimmed PATH (cf. node_bin)
+    codex_timeout: int = 600      # per-call subprocess timeout, seconds
+    deployment_timeout: int = 300
     timezone: str = "Europe/Lisbon"
     site_name: str = "Glasgow Research"
     author_name: str = "Vadim Glazkov"
@@ -95,7 +95,7 @@ class Config:
     # FTC paid-tool disclosure (#16).
     tool_disclosure: str = ("Disclosure: this article may mention paid tools. "
                             "We receive no compensation for any mention; "
-                            "recommendations are based on hands-on use.")
+                            "assess each tool against your own requirements.")
 
     # Author / org identity for richer JSON-LD (#12). Real, confirmed profile
     # URLs (never fabricated); CSV env vars override the sameAs tuples.
@@ -147,6 +147,12 @@ class Config:
 
     # paths (derived)
     project_root: Path = field(default=PROJECT_ROOT)
+    workspace_root: Path | None = None
+
+    @property
+    def performance_dir(self) -> Path:
+        root = self.workspace_root or self.project_root / "workspace"
+        return root / "reports" / "seo-performance"
 
     @property
     def runs_dir(self) -> Path:
@@ -177,6 +183,15 @@ class Config:
         for name, desc in _REQUIRED.items():
             if not os.environ.get(name, "").strip():
                 problems.append(f"missing {name} ({desc})")
+
+        if bool(os.environ.get("DATAFORSEO_LOGIN", "").strip()) != bool(
+                os.environ.get("DATAFORSEO_PASSWORD", "").strip()):
+            problems.append("DATAFORSEO_LOGIN and DATAFORSEO_PASSWORD must both be set or both empty")
+        try:
+            if not 1 <= int(os.environ.get("MAX_STAGE", "4")) <= 4:
+                raise ValueError
+        except ValueError:
+            problems.append("MAX_STAGE must be an integer between 1 and 4")
 
         if strict_paths:
             for name, kind in _PATH_VARS.items():
@@ -222,10 +237,12 @@ class Config:
             "INDEXNOW_SITE_URL", _default_site).strip().rstrip("/")
 
         return Config(
+            workspace_root=Path(os.environ.get(
+                "WORKSPACE_ROOT", str(PROJECT_ROOT.parent / "thematic-workspace"))),
             gsc_service_account_json=Path(os.environ["GSC_SERVICE_ACCOUNT_JSON"].strip()),
             gsc_site_url=os.environ["GSC_SITE_URL"].strip(),
-            dataforseo_login=os.environ["DATAFORSEO_LOGIN"].strip(),
-            dataforseo_password=os.environ["DATAFORSEO_PASSWORD"].strip(),
+            dataforseo_login=os.environ.get("DATAFORSEO_LOGIN", "").strip(),
+            dataforseo_password=os.environ.get("DATAFORSEO_PASSWORD", "").strip(),
             telegram_bot_token=os.environ["TELEGRAM_BOT_TOKEN"].strip(),
             telegram_chat_id=os.environ["TELEGRAM_CHAT_ID"].strip(),
             blog_repo_url=os.environ["BLOG_REPO_URL"].strip(),
@@ -236,10 +253,11 @@ class Config:
             evidence_dir=Path(os.environ["EVIDENCE_DIR"].strip()),
             max_stage=_int("MAX_STAGE", 4),
             agent_max_tokens=_int("AGENT_MAX_TOKENS", 8000),
-            model_sonnet=os.environ.get("MODEL_SONNET", "claude-sonnet-5").strip(),
-            model_opus=os.environ.get("MODEL_OPUS", "claude-opus-4-8").strip(),
-            claude_bin=os.environ.get("CLAUDE_BIN", "claude").strip(),
-            claude_timeout=_int("CLAUDE_TIMEOUT", 600),
+            model_sonnet=os.environ.get("MODEL_SONNET", "gpt-5.6-terra").strip(),
+            model_opus=os.environ.get("MODEL_OPUS", "gpt-5.6-sol").strip(),
+            codex_bin=os.environ.get("CODEX_BIN", "codex").strip(),
+            codex_timeout=_int("CODEX_TIMEOUT", 600),
+            deployment_timeout=max(1, _int("DEPLOYMENT_TIMEOUT", 300)),
             timezone=os.environ.get("TIMEZONE", "Europe/Lisbon").strip(),
             site_name=os.environ.get("SITE_NAME", "Glasgow Research").strip(),
             author_name=os.environ.get("AUTHOR_NAME", "Vadim Glazkov").strip(),
@@ -251,12 +269,12 @@ class Config:
                 "CTA_TEXT",
                 "Glasgow Research helps B2B SaaS teams turn customer and "
                 "market research into product decisions.").strip(),
-            cta_url=os.environ.get("CTA_URL", "https://glasgow.works").strip(),
+            cta_url=os.environ.get("CTA_URL", "https://blog.glasgow.works/services/").strip(),
             tool_disclosure=os.environ.get(
                 "TOOL_DISCLOSURE",
                 "Disclosure: this article may mention paid tools. We receive "
-                "no compensation for any mention; recommendations are based "
-                "on hands-on use.").strip(),
+                "no compensation for any mention; assess each tool against "
+                "your own requirements.").strip(),
             author_url=os.environ.get(
                 "AUTHOR_URL", "https://blog.glasgow.works/authors/vadim/").strip(),
             author_same_as=_csv("AUTHOR_SAME_AS")

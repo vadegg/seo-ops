@@ -25,9 +25,9 @@ Default threshold ``0.55``: empirically, independently written posts on
 the same topic land well below ~0.3 even when they share vocabulary
 (distinct shingles dominate), whereas a true paraphrase or a re-run of the
 same brief sits comfortably above ~0.6. 0.55 leaves margin on both sides so
-the WARN fires on real overlap, not on topical neighbours. The check is
-advisory — it never blocks publication; it only raises a WARN that feeds the
-run telemetry/digest (and could trigger a forced Editor rewrite later).
+the WARN fires on real overlap, not on topical neighbours. The step writes
+its score for telemetry; the publication gate rejects above-threshold
+results and missing checks.
 """
 
 from __future__ import annotations

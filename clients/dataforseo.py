@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import base64
 
-from .retry import with_backoff
+from .retry import PermanentClientError, with_backoff
 
 _BASE = "https://api.dataforseo.com/v3"
+_TRANSIENT_CODES = {40101, 40103, 40202, 40209}
 
 
 class DataForSEOClient:
@@ -17,8 +18,16 @@ class DataForSEOClient:
         self._log = logger
         self._loc = location_code
         self._lang = language_code
+        self._unavailable: str | None = None
 
     def _post(self, path: str, payload: list[dict]) -> dict:
+        if self._unavailable:
+            raise PermanentClientError(self._unavailable)
+
+        def reject(message):
+            self._unavailable = message
+            raise PermanentClientError(message)
+
         def _call():
             import requests
 
@@ -29,11 +38,24 @@ class DataForSEOClient:
                 json=payload,
                 timeout=60,
             )
+            if 400 <= r.status_code < 500 and r.status_code not in {408, 425, 429}:
+                reject(f"DataForSEO HTTP {r.status_code}: check account billing, "
+                       "credentials and request; disabled for this run")
             r.raise_for_status()
             data = r.json()
             if data.get("status_code") != 20000:
-                raise RuntimeError(f"dataforseo status {data.get('status_code')}: "
-                                   f"{data.get('status_message')}")
+                code = int(data.get("status_code") or 0)
+                message = f"dataforseo status {code}: {data.get('status_message')}"
+                if 40000 <= code < 50000 and code not in _TRANSIENT_CODES:
+                    reject(message)
+                raise RuntimeError(message)
+            for task in data.get("tasks") or []:
+                code = int(task.get("status_code") or 20000)
+                if code != 20000:
+                    message = f"dataforseo task {code}: {task.get('status_message')}"
+                    if 40000 <= code < 50000 and code not in _TRANSIENT_CODES:
+                        reject(message)
+                    raise RuntimeError(message)
             return data
 
         return with_backoff(_call, attempts=4, logger=self._log,

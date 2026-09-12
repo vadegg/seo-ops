@@ -116,7 +116,7 @@ class CrashingRunner(FakeRunner):
         return super().run(name=name, **kw)
 
 
-def test_crash_writes_fail_report_and_pings_telegram(project, deps_factory):
+def test_dry_run_crash_reports_without_sending_telegram(project, deps_factory):
     deps = deps_factory(runner=CrashingRunner())
     rc = run_pipeline(project, run_date="2026-05-19", dry_run=True, deps=deps)
     assert rc == 1
@@ -124,7 +124,7 @@ def test_crash_writes_fail_report_and_pings_telegram(project, deps_factory):
     assert report["status"] == "fail"
     assert report["error"]                            # traceback captured
     assert any("run.log" in a for a in report["artifacts"])
-    assert any(level == "hard" for level, _ in deps.telegram.messages)
+    assert deps.telegram.messages == []
     saved = json.loads(
         (project.runs_dir / "2026-05-19" / "report.json").read_text())
     assert saved["status"] == "fail"

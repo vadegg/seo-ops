@@ -104,7 +104,8 @@ class FakeRunner:
                     "![Researcher observing a usability test](/img/test.png)\n"),
                 "critique": {"checklist": {
                     "on_brief": True, "style_guide": True, "seo": True,
-                    "internal_links": True, "evidence_grounded": True},
+                    "internal_links": True, "evidence_grounded": True,
+                    "first_hand_present": True},
                     "passed": True, "notes": "clean"}})
         if name == "humanizer":
             # The Humanizer emits Markdown (not JSON), like the Writer.
@@ -128,7 +129,8 @@ class FailingEditorRunner(FakeRunner):
                 "edited_markdown": "## Body\n\nText.\n",
                 "critique": {"checklist": {
                     "on_brief": True, "style_guide": False, "seo": True,
-                    "internal_links": True, "evidence_grounded": True},
+                    "internal_links": True, "evidence_grounded": True,
+                    "first_hand_present": True},
                     "passed": False, "notes": "style issues"}})
         return super()._canned(name=name, model=model)
 
@@ -186,9 +188,20 @@ class FakeGit:
         self.written[rel_path] = content
         return Path(rel_path)
 
+    def assert_unique_slug(self, rel_path, slug, posts_dir):
+        pass
+
+    def validate(self):
+        pass
+
     def commit_and_push(self, rel_paths, message, push=True):
         self.pushed = push
         return "deadbeef"
+
+
+class FakeDeployment:
+    def wait_for_post(self, url, title):
+        return {"verified": True, "http_status": 200, "verified_at": "2026-05-19T01:00:00Z"}
 
 
 class FakeTelegram:
@@ -283,11 +296,12 @@ def deps_factory():
     from pipeline.orchestrator import PipelineDeps
 
     def make(runner=None, gsc=None, dfs=None, evidence=None,
-             git=None, tg=None, fleet=None):
+             git=None, tg=None, fleet=None, deployment=None):
         return PipelineDeps(
             agent_runner=runner or FakeRunner(),
             gsc=gsc or FakeGSC(), dataforseo=dfs or FakeDFS(),
             evidence=evidence or FakeEvidence(), git=git or FakeGit(),
-            telegram=tg or FakeTelegram(), fleet=fleet or FakeFleet())
+            telegram=tg or FakeTelegram(), fleet=fleet or FakeFleet(),
+            deployment=deployment or FakeDeployment())
 
     return make

@@ -58,7 +58,7 @@ def test_from_step_resumes_to_publisher(project, deps_factory):
     deps = deps_factory()
     rc = run_selected_steps(
         project, run_date="2026-05-19",
-        step_names=["outliner", "writer", "editor", "humanizer",
+        step_names=["outliner", "writer", "editor", "uniqueness", "humanizer",
                     "assembler", "publisher"],
         dry_run=True, deps=deps)
     assert rc == 0

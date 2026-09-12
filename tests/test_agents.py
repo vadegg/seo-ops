@@ -38,13 +38,14 @@ def test_select_relevant_links_falls_back_when_no_overlap():
 
 
 # ---- #14 first-hand evidence block ----------------------------------------
-def test_writer_requires_first_hand_when_evidence_present():
+def test_writer_requires_relevant_support_for_first_hand():
     r = CapturingRunner()
     writer.run(r, model="m", tools=[], max_tokens=100, logger=None,
                brief={"title": "t"}, style_guide="",
                evidence_passages=[{"file": "n.md", "text": "insight"}])
     assert "first-hand" in r.user.lower()
-    assert "AT LEAST ONE" in r.user
+    assert "ONLY if a supplied passage" in r.user
+    assert "Unrelated passages are not evidence" in r.user
 
 
 def test_writer_forbids_first_hand_when_no_evidence():

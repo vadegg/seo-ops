@@ -49,7 +49,7 @@ extras to persist for future days (may be empty).
 def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
         stage_spec, backlog: dict, topic_history: dict,
         gsc_rows: list | None, dfs_metrics: list | None,
-        seed_topics: str | None) -> dict:
+        seed_topics: str | None, performance_context: str = "") -> dict:
     user = f"""Escalation stage {stage_spec.stage}: {stage_spec.approach}
 
 ## backlog/keyword_backlog.json (cheap reserve — consider first)
@@ -63,6 +63,9 @@ def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
 
 ## DataForSEO metrics (may be empty / unavailable)
 {json.dumps(dfs_metrics or [], ensure_ascii=False)[:6000]}
+
+## Performance of existing pages (dated observations, not new-topic suggestions)
+{performance_context}
 
 ## Evergreen seed list (use at stage 4, or for inspiration)
 {(seed_topics or '')[:4000] if stage_spec.use_seed_list else '(not this stage)'}

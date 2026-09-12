@@ -27,6 +27,25 @@ Two layers, both safe to run without the API:
 from __future__ import annotations
 
 import re
+from collections import Counter
+
+
+def preservation_errors(before: str, after: str) -> list[str]:
+    """Guard the properties a stylistic rewrite has no reason to change."""
+    errors = []
+    patterns = {
+        "links": r"!?\[[^\]\n]+\]\([^\n]+?\)",
+        "numbers": r"(?<!\w)\d+(?:[.,]\d+)*(?:%|\b)",
+    }
+    for label, pattern in patterns.items():
+        if Counter(re.findall(pattern, before)) != Counter(re.findall(pattern, after)):
+            errors.append(label)
+    if re.findall(r"^#{2,6}\s+.+$", before, re.M) != re.findall(
+            r"^#{2,6}\s+.+$", after, re.M):
+        errors.append("headings")
+    if not 0.8 <= len(after) / max(1, len(before)) <= 1.25:
+        errors.append("length")
+    return errors
 
 # --------------------------------------------------------------------------
 # The cliché stop-list — single source of truth (documented in
@@ -156,7 +175,7 @@ def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
     ) or "(no evidence retrieved — do not invent specifics)"
 
     user = f"""## Edited post (humanise; preserve all facts and links)
-{deterministic[:18000]}
+{deterministic}
 
 ## style_guide.md (Glasgow Research voice — obey)
 {style_guide[:3500]}
@@ -185,4 +204,10 @@ Rewrite the post now. Output ONLY the Markdown body."""
             logger.warning("humanizer LLM returned empty — keeping "
                            "deterministic result")
         return deterministic
+    errors = preservation_errors(draft_md, out)
+    if errors:
+        if logger:
+            logger.warning("humanizer changed %s — keeping the reviewed draft",
+                           ", ".join(errors))
+        return draft_md
     return out

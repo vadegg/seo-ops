@@ -31,18 +31,19 @@ def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
         for e in evidence_passages[:8]
     ) or "(no evidence retrieved — write from domain expertise, do not fabricate data)"
 
-    # #14: require a first-hand, anonymised case ONLY when the corpus actually
-    # supplied passages. With no evidence, never invent one.
+    # Retrieval is a suggestion, not proof that a client case supports this topic.
     first_hand = (
-        "- Include AT LEAST ONE first-hand, anonymised example grounded in the "
-        "evidence above (e.g. \"In a JTBD study for a Series B HR-tech "
-        "company…\"). Generalise — NEVER name or otherwise identify the client."
+        "- Include a first-hand, anonymised example ONLY if a supplied passage "
+        "directly documents the relevant work and supports every claimed detail. "
+        "Unrelated passages are not evidence. Otherwise omit the case or use a "
+        "clearly labelled hypothetical example, never invented agency experience. "
+        "NEVER name or otherwise identify the client."
         if has_evidence else
         "- Do NOT invent first-hand examples or case studies — there is no "
         "evidence to ground them.")
 
     user = f"""## Brief (follow exactly)
-{json.dumps(brief, ensure_ascii=False)[:8000]}
+{json.dumps(brief, ensure_ascii=False)}
 
 ## style_guide.md (obey)
 {style_guide[:4000]}

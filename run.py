@@ -42,6 +42,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     # Per-step selection (any of these switches to selected-steps mode).
     p.add_argument("--list-steps", action="store_true",
                    help="print the pipeline step names and exit")
+    p.add_argument("--report-only", action="store_true",
+                   help="refresh local SEO report using read-only GSC APIs; no agents or publication")
+    p.add_argument("--inspect-limit", type=int, default=20,
+                   help="maximum URL inspections for --report-only (0..1000)")
+    p.add_argument("--blog-dir", default=None,
+                   help="existing blog checkout for --report-only (default: managed clone)")
     p.add_argument("--steps", default=None,
                    help="comma-separated step names to run in isolation")
     p.add_argument("--from", dest="from_step", default=None,
@@ -81,6 +87,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     selected = _resolve_steps(args)
+    if args.report_only and (selected or args.force or args.dry_run):
+        raise SystemExit("--report-only cannot be combined with step selection, --force or --dry-run")
+    if not 0 <= args.inspect_limit <= 1000:
+        raise SystemExit("--inspect-limit must be between 0 and 1000")
 
     try:
         cfg = Config.load()
@@ -90,21 +100,48 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.max_stage is not None:
+        if not 1 <= args.max_stage <= 4:
+            raise SystemExit("--max-stage must be between 1 and 4")
         cfg = type(cfg)(**{**cfg.__dict__, "max_stage": args.max_stage})
+    if not 1 <= args.start_stage <= cfg.max_stage:
+        raise SystemExit("--start-stage must be between 1 and --max-stage")
 
     run_date = args.date or datetime.now(ZoneInfo(cfg.timezone)).strftime("%Y-%m-%d")
+    try:
+        if datetime.strptime(run_date, "%Y-%m-%d").strftime("%Y-%m-%d") != run_date:
+            raise ValueError
+    except ValueError:
+        raise SystemExit("--date must be a calendar date in YYYY-MM-DD format")
 
     # Imported here so a bad config fails before importing the pipeline.
     from pipeline.orchestrator import run_pipeline, run_selected_steps
 
-    if selected is None:
-        return run_pipeline(
-            cfg, run_date=run_date, dry_run=args.dry_run,
-            start_stage=args.start_stage)
-
-    return run_selected_steps(
-        cfg, run_date=run_date, step_names=selected, dry_run=args.dry_run,
-        start_stage=args.start_stage, force=args.force)
+    from pipeline.locking import AlreadyRunning, run_lock
+    try:
+        with run_lock(cfg.runs_dir):
+            if args.report_only:
+                from datetime import date
+                from pathlib import Path
+                from clients.gsc import GSCClient
+                from pipeline.performance import refresh_report
+                repo = Path(args.blog_dir) if args.blog_dir else cfg.runs_dir / "_blog_repo"
+                posts = repo / cfg.blog_posts_dir
+                if not posts.is_dir():
+                    raise SystemExit(f"blog posts directory does not exist: {posts}")
+                gsc = GSCClient(cfg.gsc_service_account_json, cfg.gsc_site_url)
+                report = refresh_report(cfg, gsc, posts, today=date.fromisoformat(run_date),
+                                        force=True, inspect_limit=args.inspect_limit)
+                print(cfg.performance_dir / f"{report['generated_on']}.md")
+                return 0
+            if selected is None:
+                return run_pipeline(cfg, run_date=run_date, dry_run=args.dry_run,
+                                    start_stage=args.start_stage)
+            return run_selected_steps(
+                cfg, run_date=run_date, step_names=selected, dry_run=args.dry_run,
+                start_stage=args.start_stage, force=args.force)
+    except AlreadyRunning as exc:
+        print(str(exc), file=sys.stderr)
+        return 75
 
 
 if __name__ == "__main__":

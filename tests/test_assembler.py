@@ -3,7 +3,7 @@ import re
 import pytest
 
 from pipeline.assembler import (AssemblyError, assemble,
-                                _count_internal_links, _toc_block)
+                                _count_internal_links)
 
 # A meta description that normalizes within the blog's 150–160 Zod refine.
 VALID_DESC = (
@@ -72,43 +72,13 @@ def test_disclosure_only_when_flagged_or_tools_title():
     assert "<!-- gr:disclosure -->" in tools.markdown
 
 
-def test_toc_only_for_long_posts():
-    short = _assemble_full(_brief())
-    assert "<!-- gr:toc -->" not in short.markdown
-    long_body = ("## First section\n\n" + ("word " * 700) +
-                 "\n\n## Second section\n\n" + ("word " * 700) + "\n")
-    long_post = _assemble_full(_brief(), body=long_body)
-    assert "<!-- gr:toc -->" in long_post.markdown
-    # #33: reading time lives only in frontmatter (template renders it once);
-    # never duplicated as an in-body line.
-    assert "min read" not in long_post.markdown
-    assert "[First section](#first-section)" in long_post.markdown
-    assert "[Second section](#second-section)" in long_post.markdown
-
-
-def test_jsonld_person_author_with_sameas_and_image():
-    md = _assemble_full(_brief()).markdown
-    assert '"@type": "Person"' in md
-    assert '"name": "Vadim Glazkov"' in md
-    assert "https://linkedin.com/in/vadim" in md          # author sameAs
-    assert "https://linkedin.com/company/glasgow" in md    # org sameAs
-    assert '"@type": "ImageObject"' in md
-    assert '"width": 1200' in md
-    # author must no longer be an Organization
-    assert '"author": {\n      "@type": "Organization"' not in md
-
-
-def test_jsonld_description_matches_normalized_frontmatter():
-    # An over-long meta is clamped for frontmatter; the JSON-LD description
-    # must use the SAME clamped value, not the raw one (#3 review fix).
-    long_desc = ("This is a deliberately over-long meta description that keeps "
-                 "going well past the one hundred and sixty character ceiling "
-                 "so the assembler has to clamp it down to a fitting size now.")
-    md = _assemble_full(_brief(meta_description=long_desc)).markdown
-    fm_desc = re.search(r'^description: "(.*)"$', md, re.MULTILINE).group(1)
-    jl_desc = re.search(r'"description": "(.*)"', md).group(1)
-    assert fm_desc == jl_desc
-    assert long_desc not in md          # raw, unclamped value never emitted
+def test_rendering_metadata_is_owned_by_astro_even_for_long_articles():
+    body = "## First section\n\n" + "word " * 700 + "\n\n## Second section\n\n" + "word " * 700
+    md = _assemble_full(_brief(), body=body).markdown
+    assert "## First section" in md and "## Second section" in md
+    assert "<!-- gr:toc -->" not in md
+    assert "application/ld+json" not in md
+    assert "readingTime:" in md
 
 
 def test_count_internal_links_netloc_exact():
@@ -120,14 +90,6 @@ def test_count_internal_links_netloc_exact():
             "[d](https://other.com/p?ref=blog.glasgow.works) "
             "[e](//cdn.example/p)")
     assert _count_internal_links(body, base) == 2
-
-
-def test_toc_dedupes_repeated_heading_anchors():
-    body = ("## Examples\n\n" + ("word " * 700) +
-            "\n\n## Examples\n\n" + ("word " * 700) + "\n")
-    toc = _toc_block(body)
-    assert "(#examples)" in toc
-    assert "(#examples-1)" in toc      # second identical H2 gets a suffix
 
 
 def test_underlinked_post_warns(caplog):
@@ -143,14 +105,13 @@ def test_underlinked_post_warns(caplog):
     assert any("internal links" in r.message for r in caplog.records)
 
 
-def test_assemble_frontmatter_and_jsonld():
+def test_assemble_frontmatter_and_body():
     post = _assemble(_brief())
     md = post.markdown
     assert md.startswith("---\n")
     assert "title: \"How Many Users for Usability Testing\"" in md
     assert "pubDate: 2026-05-19" in md
-    assert 'application/ld+json' in md
-    assert '"@type": "BlogPosting"' in md
+    assert 'application/ld+json' not in md
     assert "![A researcher](/i.png)" in md
     assert post.slug == "usability-testing-sample-size"
 

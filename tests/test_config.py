@@ -3,7 +3,7 @@ import pytest
 from config import Config, ConfigError
 
 _REQUIRED = ["GSC_SERVICE_ACCOUNT_JSON", "GSC_SITE_URL",
-             "DATAFORSEO_LOGIN", "DATAFORSEO_PASSWORD", "TELEGRAM_BOT_TOKEN",
+             "TELEGRAM_BOT_TOKEN",
              "TELEGRAM_CHAT_ID", "BLOG_REPO_URL", "GIT_DEPLOY_KEY",
              "EVIDENCE_DIR"]
 
