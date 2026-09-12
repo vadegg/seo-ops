@@ -58,7 +58,7 @@ def test_from_step_resumes_to_publisher(project, deps_factory):
     deps = deps_factory()
     rc = run_selected_steps(
         project, run_date="2026-05-19",
-        step_names=["outliner", "writer", "editor", "humanizer",
+        step_names=["outliner", "writer", "editor", "uniqueness", "humanizer",
                     "assembler", "publisher"],
         dry_run=True, deps=deps)
     assert rc == 0
@@ -176,6 +176,64 @@ def test_reconcile_floor_and_cap(tmp_path):
     assert stats["kept"] == 10
 
 
+def test_reconcile_drops_rephrased_variants_of_published_keywords(tmp_path):
+    """A published keyword re-enters the reserve under a slightly different
+    phrasing and is then re-proposed forever (the 03.08–21.08.2026 loop).
+    Pruning must match on the normalized keyword, not the raw string."""
+    path = tmp_path / "keyword_backlog.json"
+    path.write_text(json.dumps({"candidates": []}))
+    published = "how to detect fake and AI-generated participants in user research"
+    incoming = [
+        {"keyword": published + " (data quality)", "score": 0.73},
+        {"keyword": "How to Detect Fake Participants in User Research", "score": 0.7},
+        {"keyword": "detect fake and AI-generated participants in user research",
+         "score": 0.69},
+        {"keyword": "how to recruit B2B research participants", "score": 0.66},
+    ]
+    _reconcile_keyword_backlog(
+        path, candidates=incoming, surplus=[], published_keyword="",
+        published_set={published}, floor=0.4, cap=50, run_date="2026-08-21")
+    kept = {c["keyword"] for c in json.loads(path.read_text())["candidates"]}
+    assert kept == {"how to recruit B2B research participants"}, kept
+
+
+def test_reconcile_collapses_near_duplicates_inside_the_reserve(tmp_path):
+    """Three phrasings of one topic must not eat three slots of the reserve."""
+    path = tmp_path / "keyword_backlog.json"
+    path.write_text(json.dumps({"candidates": []}))
+    incoming = [
+        {"keyword": "how B2B buyers use AI (ChatGPT/Perplexity) to research and "
+                    "shortlist vendors", "score": 0.72},
+        {"keyword": "how B2B buyers use AI (ChatGPT, Perplexity) to research and "
+                    "shortlist vendors", "score": 0.7},
+        {"keyword": "how B2B buyers use AI (ChatGPT) to research and shortlist "
+                    "vendors", "score": 0.68},
+    ]
+    _reconcile_keyword_backlog(
+        path, candidates=incoming, surplus=[], published_keyword="",
+        published_set=set(), floor=0.4, cap=50, run_date="2026-08-21")
+    kept = json.loads(path.read_text())["candidates"]
+    assert len(kept) == 1, kept
+    assert kept[0]["score"] == 0.72     # the best score of the merged group
+
+
+def test_reconcile_keeps_genuinely_distinct_keywords(tmp_path):
+    """Normalization must not collapse different topics that share words."""
+    path = tmp_path / "keyword_backlog.json"
+    path.write_text(json.dumps({"candidates": []}))
+    incoming = [
+        {"keyword": "how to run a usability test", "score": 0.7},
+        {"keyword": "how to run a diary study", "score": 0.69},
+        {"keyword": "how much does user research cost", "score": 0.68},
+    ]
+    _reconcile_keyword_backlog(
+        path, candidates=incoming, surplus=[], published_keyword="",
+        published_set={"how to run a card sort"}, floor=0.4, cap=50,
+        run_date="2026-08-21")
+    kept = json.loads(path.read_text())["candidates"]
+    assert len(kept) == 3, kept
+
+
 def _ns(**kw):
     base = {"steps": None, "from_step": None, "stop_after": None}
     base.update(kw)
@@ -194,3 +252,31 @@ def test_resolve_steps_explicit_and_ranges():
     assert _resolve_steps(_ns(from_step="outliner",
                               stop_after="editor")) == ["outliner", "writer",
                                                         "editor"]
+
+
+def test_stage_2_loosens_the_gsc_impression_floor(project, deps_factory):
+    """Stage 2's job is "loosen GSC thresholds". It used to widen only the
+    position band and keep the client's impressions>=20 default, which on a
+    young blog leaves ~1 query — so the Researcher fell back to the keyword
+    reserve and recycled it."""
+    from pipeline.escalation import STAGES
+    from pipeline.steps import gather_research_context
+
+    seen = []
+
+    class RecordingGSC:
+        def near_top_queries(self, **kw):
+            seen.append(kw)
+            return [{"query": "q", "clicks": 0, "impressions": 5,
+                     "ctr": 0.0, "position": 12.0}]
+
+    class NoDFS:
+        def keyword_metrics(self, seeds):
+            return []
+
+    deps = deps_factory(gsc=RecordingGSC(), dfs=NoDFS())
+    for stage in (1, 2):
+        gather_research_context(project, deps, STAGES[stage], logger=None)
+    assert seen[0]["min_pos"] == 5.0 and seen[0]["max_pos"] == 20.0
+    assert seen[1]["min_pos"] == 3.0 and seen[1]["max_pos"] == 40.0
+    assert seen[1]["min_impressions"] < seen[0].get("min_impressions", 20)

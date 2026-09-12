@@ -27,15 +27,9 @@ def test_render_includes_new_post_at_top():
     assert "[Fresh](/fresh)" in out
 
 
-def test_publish_writes_llms_txt(project, deps_factory):
+def test_publisher_does_not_shadow_the_sites_llms_route(project, deps_factory):
     deps = deps_factory()
     rc = run_selected_steps(project, run_date="2026-05-19",
                             step_names=STEP_NAMES, dry_run=False, deps=deps)
     assert rc == 0
-    assert "public/llms.txt" in deps.git.written
-    content = deps.git.written["public/llms.txt"]
-    assert "Glasgow Research" in content
-    assert "Vadim Glazkov" in content
-    # the just-published post appears in the map
-    status = ArtifactStore(project.runs_dir / "2026-05-19").read_json(A.PUBLISHER)
-    assert status["slug"] in content
+    assert "public/llms.txt" not in deps.git.written

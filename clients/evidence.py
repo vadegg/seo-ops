@@ -11,11 +11,21 @@ import re
 from collections import Counter
 from pathlib import Path
 
-_TOKEN = re.compile(r"[a-z0-9]+")
+_TOKEN = re.compile(r"[^\W_]+", re.UNICODE)
+_STOPWORDS = frozenset("""
+a an the and or but vs versus for of in on at to how what when why is are
+was were be been being do does did your you we our it its with that this
+these those from by as into can could should would will not no which who
+than then also more most very some any use using used guide step steps
+research study studies user users product team teams practical best
+и или но для на в во по из к ко с со от до как что это эти тот при не
+исследование исследования пользователь пользователи
+""".split())
 
 
 def _tokenize(text: str) -> list[str]:
-    return _TOKEN.findall(text.lower())
+    return [t for t in _TOKEN.findall(text.casefold())
+            if len(t) > 1 and not t.isdigit() and t not in _STOPWORDS]
 
 
 def _split_passages(text: str) -> list[str]:
@@ -91,9 +101,17 @@ class EvidenceClient:
         self._index()
         if not self._passages:
             return []
-        q_terms = _tokenize(query)
+        q_terms = set(_tokenize(query))
+        if not q_terms:
+            return []
+        # One incidental match ("vs", a year, or a generic domain word) is
+        # not evidence for a multi-term research question.
+        min_matches = min(2, len(q_terms))
         scored = []
         for p in self._passages:
+            matched = q_terms & p["tf"].keys()
+            if len(matched) < min_matches or len(matched) / len(q_terms) < 0.2:
+                continue
             score = 0.0
             for term in q_terms:
                 tf = p["tf"].get(term, 0)
@@ -108,6 +126,7 @@ class EvidenceClient:
         scored.sort(key=lambda x: -x[0])
         return [
             {"file": p["file"], "path": p["path"],
-             "text": p["text"], "score": round(s, 4)}
+             "text": p["text"], "score": round(s, 4),
+             "matched_terms": sorted(q_terms & p["tf"].keys())}
             for s, p in scored[:k]
         ]

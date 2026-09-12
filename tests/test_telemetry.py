@@ -64,7 +64,7 @@ def test_degraded_run_writes_one_report(project, deps_factory):
     run_pipeline(project, run_date="2026-05-19", dry_run=True, deps=deps)
     assert len(deps.fleet.reports) == 1              # one consolidated report
     report = deps.fleet.reports[0]
-    assert report["status"] == "ok"
+    assert report["status"] == "fail"
     assert "degraded to escalation level" in report["detailed"]  # degradations
     assert report["metrics"]["output_tokens"] > 0    # article cost (#5)
     assert report["metrics"]["degradations"] > 0
@@ -78,6 +78,14 @@ def test_clean_run_report_has_no_degradations(project, deps_factory):
     # #13 under-link WARN does not fire — isolating the clean path.
     (project.themes_dir / "internal_links.json").write_text(
         json.dumps({"posts": []}), encoding="utf-8")
+    # Give the uniqueness guard a corpus, otherwise it (legitimately) warns
+    # that duplicate detection is inactive.
+    clone = project.runs_dir / "_blog_repo" / project.blog_posts_dir
+    clone.mkdir(parents=True, exist_ok=True)
+    (clone / "2026-05-01-card-sorting.md").write_text(
+        "---\nslug: card-sorting\n---\n\nOpen sorts surface vocabulary; "
+        "closed sorts validate a proposed information architecture.\n",
+        encoding="utf-8")
     deps = deps_factory()
     run_pipeline(project, run_date="2026-05-19", dry_run=True, deps=deps)
     assert len(deps.fleet.reports) == 1

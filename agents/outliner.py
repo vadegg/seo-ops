@@ -29,7 +29,7 @@ Output ONE JSON object, no prose:
 {
   "title": str,                 // <= 60 chars, primary keyword natural
   "slug": str,                  // kebab-case
-  "meta_description": str,      // 140-160 chars, benefit-led
+  "meta_description": str,      // 150-160 chars, benefit-led
   "primary_keyword": str,
   "secondary_keywords": [str],
   "target_word_count": int,     // 1100-1800 typical

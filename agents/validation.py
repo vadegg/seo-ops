@@ -13,6 +13,11 @@ keep the test suite free of third-party dependencies and network.
 
 from __future__ import annotations
 
+import math
+
+EDITOR_CHECKS = ("on_brief", "style_guide", "seo", "internal_links",
+                 "evidence_grounded", "first_hand_present")
+
 
 class ValidationError(ValueError):
     """An agent's output does not match its declared contract."""
@@ -32,7 +37,8 @@ def _nonempty_str(data: dict, key: str, agent: str) -> None:
 
 
 def _is_number(v) -> bool:
-    return isinstance(v, (int, float)) and not isinstance(v, bool)
+    return (isinstance(v, (int, float)) and not isinstance(v, bool)
+            and math.isfinite(v))
 
 
 def validate_researcher(data) -> None:
@@ -46,7 +52,7 @@ def validate_researcher(data) -> None:
         if not isinstance(c.get("keyword"), str) or not c["keyword"].strip():
             raise ValidationError(
                 f"researcher: candidate[{i}].keyword must be a non-empty string")
-        if not _is_number(c.get("score")):
+        if not _is_number(c.get("score")) or not 0 <= c["score"] <= 1:
             raise ValidationError(
                 f"researcher: candidate[{i}].score must be a number")
 
@@ -55,7 +61,7 @@ def validate_strategist(data) -> None:
     d = _require_dict(data, "strategist")
     _nonempty_str(d, "topic", "strategist")
     _nonempty_str(d, "primary_keyword", "strategist")
-    if not _is_number(d.get("score")):
+    if not _is_number(d.get("score")) or not 0 <= d["score"] <= 1:
         raise ValidationError("strategist: 'score' must be a number")
 
 
@@ -72,3 +78,13 @@ def validate_editor(data) -> None:
         raise ValidationError("editor: 'edited_markdown' must be a non-empty string")
     if not isinstance(d.get("critique"), dict):
         raise ValidationError("editor: 'critique' must be an object")
+    critique = d["critique"]
+    checklist = critique.get("checklist")
+    if not isinstance(checklist, dict) or any(
+            type(checklist.get(key)) is not bool for key in EDITOR_CHECKS):
+        raise ValidationError("editor: checklist must include every required "
+                              "boolean: " + ", ".join(EDITOR_CHECKS))
+    if type(critique.get("passed")) is not bool:
+        raise ValidationError("editor: 'passed' must be a boolean")
+    if critique["passed"] and not all(checklist[key] for key in EDITOR_CHECKS):
+        raise ValidationError("editor: passed=true contradicts failed checks")

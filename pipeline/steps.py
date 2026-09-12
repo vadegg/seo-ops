@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable
@@ -28,6 +28,7 @@ from pipeline.artifacts import ArtifactStore
 from pipeline.assembler import assemble
 from pipeline.escalation import STAGES
 from pipeline.publisher import publish
+from pipeline.quality import QualityError, require_publishable, require_review, require_final_review
 
 from agents import editor, humanizer, outliner, researcher, strategist, writer
 
@@ -47,6 +48,7 @@ class StepContext:
     stage: int = 1            # escalation stage to use for a single pass
     force: bool = False
     logger: object = None
+    research_cache: dict = field(default_factory=dict)
 
 
 def model_for_stage(cfg, stage: int) -> str:
@@ -57,35 +59,46 @@ def model_for_stage(cfg, stage: int) -> str:
 # --------------------------------------------------------------------------
 # Shared helpers (also used by the full-run escalation loop)
 # --------------------------------------------------------------------------
-def gather_research_context(cfg, deps, spec, logger):
+def gather_research_context(cfg, deps, spec, logger, cache=None):
     """Deterministic GSC/DataForSEO gathering with retry. On persistent
     API failure return empty + a flag so the ladder can move to a
     non-dependent stage instead of crashing."""
-    gsc_rows: list = []
-    dfs_metrics: list = []
+    cache = cache if cache is not None else {}
+    gsc_rows: list = cache.get("gsc_rows", [])
+    dfs_metrics: list = cache.get("dfs_metrics", [])
     api_failed = False
 
     if spec.use_gsc:
         try:
-            min_pos, max_pos = (5.0, 20.0) if spec.stage == 1 else (3.0, 40.0)
-            gsc_rows = deps.gsc.near_top_queries(min_pos=min_pos,
-                                                 max_pos=max_pos)
+            # Stage 2 is "loosen GSC thresholds": widen the position band AND
+            # drop the impressions floor. On a young blog the default floor of
+            # 20 impressions leaves a single query, which starves the
+            # Researcher and pushes it back onto the keyword reserve.
+            stage_1 = spec.stage == 1
+            min_pos, max_pos = (5.0, 20.0) if stage_1 else (3.0, 40.0)
+            gsc_rows = deps.gsc.near_top_queries(
+                min_pos=min_pos, max_pos=max_pos,
+                min_impressions=20 if stage_1 else 5)
+            cache["gsc_rows"] = gsc_rows
         except ClientError as e:
             if logger:
                 logger.warning("GSC unavailable at stage %d: %s", spec.stage, e)
             api_failed = True
 
-    if spec.use_dataforseo and gsc_rows:
+    if (spec.use_dataforseo and gsc_rows and deps.dataforseo is not None
+            and not cache.get("dataforseo_failed")):
         try:
             seeds = [r["query"] for r in gsc_rows[:60]]
             dfs_metrics = deps.dataforseo.keyword_metrics(seeds)
+            cache["dfs_metrics"] = dfs_metrics
         except ClientError as e:
             if logger:
                 logger.warning("DataForSEO unavailable at stage %d: %s",
                                spec.stage, e)
-            api_failed = True
+            cache["dataforseo_failed"] = str(e)
+            api_failed = not gsc_rows
 
-    return gsc_rows, dfs_metrics, api_failed
+    return gsc_rows, dfs_metrics, api_failed and not (gsc_rows or dfs_metrics)
 
 
 def researcher_pass(ctx: StepContext, spec, model, tools,
@@ -98,7 +111,8 @@ def researcher_pass(ctx: StepContext, spec, model, tools,
         stage_spec=spec, backlog=ctx.stores["backlog"],
         topic_history=ctx.stores["topic_history"],
         gsc_rows=gsc_rows, dfs_metrics=dfs_metrics,
-        seed_topics=ctx.stores["seed_topics"])
+        seed_topics=ctx.stores["seed_topics"],
+        performance_context=ctx.stores.get("performance_context", ""))
     ctx.store.write_json(A.RESEARCHER, candidates)
     return candidates
 
@@ -111,7 +125,8 @@ def strategist_pass(ctx: StepContext, model, stage: int) -> dict:
         ctx.deps.agent_runner, model=model, tools=[],
         max_tokens=ctx.cfg.agent_max_tokens, logger=ctx.logger,
         candidates=candidates, topic_history=ctx.stores["topic_history"],
-        content_map=ctx.stores["content_map"])
+        content_map=ctx.stores["content_map"],
+        performance_context=ctx.stores.get("performance_context", ""))
     topic["_escalation_stage"] = stage
     ctx.store.write_json(A.STRATEGIST, topic)
     return topic
@@ -234,8 +249,7 @@ def step_writer(ctx: StepContext) -> None:
 
 
 def step_editor(ctx: StepContext) -> None:
-    """Self-critique: 2 iterations, then a forced Opus final rewrite +
-    hard alert. Never abandons the day."""
+    """Two editor passes and one stronger rewrite; never publish a failed review."""
     draft = ctx.store.read_text(A.WRITER)
     brief = ctx.store.read_json(A.OUTLINER)
     evidence = ensure_evidence(ctx, brief)
@@ -250,8 +264,7 @@ def step_editor(ctx: StepContext) -> None:
                 style_guide=ctx.stores["style_guide"],
                 evidence_passages=evidence, iteration=iteration)
         except ClientError as e:
-            # Persistently-invalid editor output must NOT abandon the day —
-            # fall through to the forced final on the best draft so far.
+            # Retry validation on the best draft, then use the stronger model.
             if ctx.logger:
                 ctx.logger.warning("editor iteration %d failed validation "
                                    "(%s) — continuing", iteration, e)
@@ -276,36 +289,40 @@ def step_editor(ctx: StepContext) -> None:
         current = result["edited_markdown"]
         critique = result["critique"]
     except ClientError as e:
-        # Last-resort fallback: ship the best draft we have rather than crash
-        # the run. The "never abandons the day" contract wins over a clean
-        # critique — the hard alert below still flags it for manual review.
+        # Keep the best draft for review, but do not approve it by default.
         if ctx.logger:
             ctx.logger.warning("editor forced-final also failed validation "
-                               "(%s) — shipping best available draft", e)
+                               "(%s) — retaining rejected draft", e)
         critique = {"checklist": {}, "passed": False,
                     "notes": f"forced-final validation failed: {e}"}
     critique["forced_final"] = True
     escalation_log(ctx.run_dir, "editor: forced Opus final rewrite after 2 fails")
-    # ERROR so the run-log summary flags it and the fleet report surfaces it
-    # (metrics.errors >= 1); the run report's `detailed` carries the note.
+    # Surface the extra pass in the run report even if it eventually passes.
     if ctx.logger:
-        ctx.logger.error("editor did not pass the checklist in 2 iterations — "
-                         "published the best (Opus) version; needs manual review")
-    ctx.store.write_text(A.EDITOR_MD, current)
+        ctx.logger.warning("editor needed the final stronger-model pass")
     ctx.store.write_json(A.EDITOR_CRITIQUE, critique)
+    if not critique.get("passed"):
+        ctx.store.write_text("05-editor.rejected.md", current)
+        raise QualityError("editor did not pass after three attempts; draft retained")
+    require_review(current, critique)
+    ctx.store.write_text(A.EDITOR_MD, current)
 
 
 def step_uniqueness(ctx: StepContext) -> None:
     """#37 Deterministic near-duplicate guard between Editor and Assembler.
 
     Internal MinHash similarity of the edited body against already-published
-    posts (topic_history bodies). Advisory only: above-threshold logs a WARN
-    (which feeds the degradation summary + fleet report) but NEVER blocks
-    publication. The score is persisted to 05b for telemetry/resume."""
+    posts (bodies read from the blog clone, see ``published_corpus``).
+    The score is persisted to 05b for telemetry/resume. Assembly/publication
+    require this artifact and reject above-threshold results."""
     from pipeline import uniqueness as U
 
     body = ctx.store.read_text(A.EDITOR_MD)
-    corpus = U.published_corpus(ctx.cfg.backlog_dir / "topic_history.json")
+    corpus = U.published_corpus(
+        ctx.cfg.backlog_dir / "topic_history.json",
+        blog_content_dir=(ctx.cfg.runs_dir / "_blog_repo"
+                          / ctx.cfg.blog_posts_dir),
+        exclude_prefix=f"{ctx.run_date}-")
     score, match = U.best_match(body, corpus)
     threshold = float(getattr(ctx.cfg, "uniqueness_threshold",
                               U.DEFAULT_THRESHOLD))
@@ -321,9 +338,15 @@ def step_uniqueness(ctx: StepContext) -> None:
     ctx.store.write_json(A.UNIQUENESS, result)
 
     if ctx.logger:
-        if score >= threshold:
-            # WARN so the run-log degradation summary + run report surface it;
-            # not an ERROR — a near-duplicate is a review flag, not a failure.
+        if not corpus:
+            # An empty corpus scores 0.0 for everything, i.e. the guard is
+            # silently off — exactly how it sat idle for months. Say so.
+            ctx.logger.warning(
+                "uniqueness: corpus is empty (no published bodies under %s) "
+                "— duplicate detection is INACTIVE this run",
+                ctx.cfg.runs_dir / "_blog_repo" / ctx.cfg.blog_posts_dir)
+        elif score >= threshold:
+            # The downstream publication gate rejects this result.
             ctx.logger.warning(
                 "uniqueness: body is highly similar (%.2f >= %.2f) to "
                 "published post '%s' — review for paraphrase/self-repetition",
@@ -336,10 +359,8 @@ def step_uniqueness(ctx: StepContext) -> None:
 
 def step_humanizer(ctx: StepContext) -> None:
     """De-AI the edited body (#39): deterministic cliché strip + an LLM
-    rewrite anchored to the style guide. NON-BLOCKING — the agent returns
-    the input (deterministically cleaned) on any LLM failure, so this step
-    always writes a publishable body and never abandons the day. Runs the
-    LLM rewrite on Opus (the forced-final tier) for the best voice."""
+    rewrite anchored to the style guide. Failed review/preservation checks
+    fall back to the approved editor body."""
     edited = ctx.store.read_text(A.EDITOR_MD)
     brief = ctx.store.read_json(A.OUTLINER)
     evidence = ensure_evidence(ctx, brief)
@@ -348,12 +369,32 @@ def step_humanizer(ctx: StepContext) -> None:
         max_tokens=ctx.cfg.agent_max_tokens, logger=ctx.logger,
         draft_md=edited, style_guide=ctx.stores["style_guide"],
         evidence_passages=evidence)
+    if body != edited:
+        # The last model to change the text must also pass editorial review.
+        # A failed cosmetic pass can safely fall back to the approved original.
+        try:
+            result = editor.run(
+                ctx.deps.agent_runner, model=ctx.cfg.model_sonnet, tools=[],
+                max_tokens=ctx.cfg.agent_max_tokens, logger=ctx.logger,
+                draft_md=body, brief=brief, style_guide=ctx.stores["style_guide"],
+                evidence_passages=evidence, iteration=4, final=True)
+            require_review(result["edited_markdown"], result["critique"])
+            if humanizer.preservation_errors(edited, result["edited_markdown"]):
+                raise QualityError("final edit changed protected article properties")
+            body = result["edited_markdown"]
+            ctx.store.write_json("05c-humanizer.critique.json", result["critique"])
+        except (ClientError, QualityError, ValueError) as exc:
+            if ctx.logger:
+                ctx.logger.warning("final review rejected the stylistic rewrite (%s); "
+                                   "keeping the approved editor version", exc)
+            body = edited
     ctx.store.write_text(A.HUMANIZER, body)
 
 
 def step_assembler(ctx: StepContext) -> None:
     """Deterministic build. Persists a meta sidecar (slug) so the
     Publisher needs nothing else."""
+    require_publishable(ctx)
     edited = ctx.store.read_text(A.HUMANIZER)
     brief = ctx.store.read_json(A.OUTLINER)
     topic = ctx.store.read_json(A.STRATEGIST)
@@ -378,6 +419,10 @@ def step_assembler(ctx: StepContext) -> None:
 
 
 def step_publisher(ctx: StepContext) -> None:
+    pending = (ctx.store.read_json(A.PUBLISHER)
+               if ctx.store.exists(A.PUBLISHER) else {})
+    if pending.get("status") != "pushed":
+        require_publishable(ctx)
     post_md = ctx.store.read_text(A.ASSEMBLER)
     brief = ctx.store.read_json(A.OUTLINER)
     topic = ctx.store.read_json(A.STRATEGIST)
@@ -401,7 +446,8 @@ def step_publisher(ctx: StepContext) -> None:
         git_client=ctx.deps.git, logger=ctx.logger,
         candidates=research.get("candidates") or [],
         surplus=research.get("backlog_surplus") or [],
-        published_keyword=brief.get("primary_keyword", ""))
+        published_keyword=brief.get("primary_keyword", ""),
+        deployment_client=ctx.deps.deployment)
     ctx.store.write_json(A.PUBLISHER, status)
     # No per-publish message: the orchestrator emits one end-of-run fleet
     # report (+ internal report.json) instead, reusing build_digest/_publish_report.
@@ -426,8 +472,12 @@ def _publish_report(ctx, brief: dict, topic: dict, status: dict,
     except (OSError, ValueError):
         pass
 
-    header = ("Опубликована новая статья" if status.get("status") == "published"
-              else "Статья собрана")
+    published_header = ("Статья опубликована, доступность подтверждена"
+                        if status.get("deployment", {}).get("verified")
+                        else "Статья отмечена опубликованной (без проверки доступности)")
+    header = {"published": published_header,
+              "pushed": "Изменения отправлены, деплой ещё не подтверждён"}.get(
+                  status.get("status"), "Статья собрана")
     lines = [
         header,
         "",
@@ -513,7 +563,8 @@ def build_run_report(cfg, run_dir, run_date, accumulator, usage_report, *,
     """
     store = ArtifactStore(run_dir)
     pub = store.read_json(A.PUBLISHER) if store.exists(A.PUBLISHER) else {}
-    stage = int(pub.get("escalation_stage", 1))
+    topic = store.read_json(A.STRATEGIST) if store.exists(A.STRATEGIST) else {}
+    stage = int(pub.get("escalation_stage", topic.get("_escalation_stage", 1)))
     ctx = SimpleNamespace(store=store, cfg=cfg, run_date=run_date, stage=stage)
 
     detailed = build_digest(ctx, accumulator, usage_report or {})[0]
@@ -605,15 +656,49 @@ def run_steps(ctx: StepContext, selected: list[str]) -> None:
     validation. Output already on disk -> skip (unless ctx.force).
     Missing required input -> StepInputError with a fix hint."""
     chosen = set(selected)
+    if ctx.force and ctx.store.exists(A.PUBLISHER):
+        if ctx.store.read_json(A.PUBLISHER).get("status") in {"pushed", "published"}:
+            raise QualityError("cannot force-rewrite a committed publication; use a new run")
     for step in STEPS:
         if step.name not in chosen:
             continue
 
-        if ctx.store.exists(step.output) and not ctx.force:
+        can_resume = ctx.store.exists(step.output) and not ctx.force
+        if can_resume and step.name == "publisher":
+            status = ctx.store.read_json(A.PUBLISHER).get("status")
+            can_resume = status == "published" or (ctx.dry_run and status == "dry_run")
+        if can_resume and step.name == "editor":
+            # A body without an approving critique is not a completed edit.
+            can_resume = ctx.store.exists(A.EDITOR_CRITIQUE)
+            if can_resume:
+                try:
+                    require_review(ctx.store.read_text(A.EDITOR_MD),
+                                   ctx.store.read_json(A.EDITOR_CRITIQUE))
+                except (ValueError, QualityError):
+                    can_resume = False
+        if can_resume and step.name == "humanizer":
+            try:
+                require_final_review(ctx)
+            except (OSError, ValueError, QualityError):
+                can_resume = False
+        if can_resume:
             if ctx.logger:
                 ctx.logger.info("skip %s: %s already present (resume)",
                                 step.name, step.output)
             continue
+
+        # Recomputing an upstream artifact invalidates every dependent output,
+        # including outputs outside a manually selected step subset.
+        for downstream in STEPS[STEPS.index(step) + 1:]:
+            ctx.store.path(downstream.output).unlink(missing_ok=True)
+        if STEPS.index(step) <= STEP_NAMES.index("outliner"):
+            ctx.store.path(A.EVIDENCE).unlink(missing_ok=True)
+        if STEPS.index(step) <= STEP_NAMES.index("editor"):
+            ctx.store.path(A.EDITOR_CRITIQUE).unlink(missing_ok=True)
+        if STEPS.index(step) <= STEP_NAMES.index("humanizer"):
+            ctx.store.path("05c-humanizer.critique.json").unlink(missing_ok=True)
+        if STEPS.index(step) <= STEP_NAMES.index("assembler"):
+            ctx.store.path(A.ASSEMBLER_META).unlink(missing_ok=True)
 
         for inp in step.inputs:
             if not ctx.store.exists(inp):

@@ -7,6 +7,7 @@ import pytest
 
 from clients import indexnow
 from clients.indexnow import IndexNowError, submit_url
+from tests.conftest import FakeDeployment
 
 KEY = "129ebf08-3db2-4d2f-bf33-9ea41ef4cc90"
 
@@ -85,6 +86,12 @@ def _run_publish(project, *, dry_run, monkeypatch, blow_up=False):
         def ensure_clone(self):
             pass
 
+        def assert_unique_slug(self, *args):
+            pass
+
+        def validate(self):
+            pass
+
         def write_post(self, rel, md):
             pass
 
@@ -96,7 +103,8 @@ def _run_publish(project, *, dry_run, monkeypatch, blow_up=False):
         brief={"title": "T", "primary_keyword": "kw"},
         topic={"topic": "t", "cluster": ""}, stage=1,
         run_date="2026-05-19", dry_run=dry_run, git_client=_Git(),
-        logger=logging.getLogger("test"), candidates=[], surplus=[])
+        logger=logging.getLogger("test"), candidates=[], surplus=[],
+        deployment_client=FakeDeployment())
     return calls
 
 

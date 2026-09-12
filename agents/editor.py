@@ -1,8 +1,8 @@
 """Step 5 — Editor / Critic agent: self-critique loop.
 
 Returns the edited markdown plus a checklist critique. The orchestrator
-runs this up to 2 iterations; if still failing it forces a final rewrite
-on Opus and fires a hard alert — it never abandons the day.
+runs two iterations and a final stronger-model rewrite. Failed approval
+blocks publication and retains the draft for review.
 """
 
 from __future__ import annotations
@@ -20,19 +20,20 @@ pass the checklist; preserve the brief's intent and structure.
 The checklist (all must be true to pass):
 - on_brief: covers the brief's sections, intent, and word target
 - style_guide: voice, British spelling, no hype/emoji, evidence-led
-- seo: title<=60, meta 140-160, primary keyword used naturally, good H2s
+- seo: title<=60, meta 150-160, primary keyword used naturally, good H2s
 - internal_links: only the brief's anchor/URL pairs, placed naturally
 - evidence_grounded: non-obvious claims supported, no fabricated stats
-- first_hand_present: when evidence was supplied, at least one first-hand
-  example is present; when no evidence was supplied, none is invented
-  (either way this item is true)
+- first_hand_present: any first-hand example is directly supported by relevant
+  evidence, or is omitted when evidence is insufficient; hypothetical examples
+  are labelled as such. Never force a case from unrelated passages.
 
 Output ONE JSON object, no prose:
 {
   "edited_markdown": str,        // the improved full body, Markdown
   "critique": {
     "checklist": {"on_brief": bool, "style_guide": bool, "seo": bool,
-      "internal_links": bool, "evidence_grounded": bool},
+      "internal_links": bool, "evidence_grounded": bool,
+      "first_hand_present": bool},
     "passed": bool,              // true only if every checklist item true
     "notes": str
   }
@@ -48,18 +49,17 @@ def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
         for e in evidence_passages[:8]
     ) or "(no evidence retrieved)"
 
-    push = ("This is the FINAL pass — you MUST return the best possible "
-            "publishable version with passed=true achievable; fix every "
-            "issue now." if final else
+    push = ("This is the FINAL pass. Fix every supportable issue, but report "
+            "passed=false honestly if any requirement remains unmet." if final else
             f"Iteration {iteration}. If it does not pass, rewrite to pass.")
 
     user = f"""{push}
 
 ## Draft
-{draft_md[:18000]}
+{draft_md}
 
 ## Brief
-{json.dumps(brief, ensure_ascii=False)[:6000]}
+{json.dumps(brief, ensure_ascii=False)}
 
 ## style_guide.md
 {style_guide[:3500]}

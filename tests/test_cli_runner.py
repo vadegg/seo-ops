@@ -1,8 +1,7 @@
-"""CLIAgentRunner: the `claude`-CLI-backed agent runner.
+"""CLIAgentRunner: the Codex-subscription CLI runner.
 
-No real subprocess — ``subprocess.run`` is monkeypatched to return canned CLI
-JSON, so these assert on argv construction, usage/cost extraction, and error
-handling in isolation.
+No real subprocess runs here. ``subprocess.run`` returns canned Codex JSONL
+events so argv, isolation, usage accounting, and failures stay deterministic.
 """
 
 import json
@@ -15,33 +14,37 @@ from agents.runner import CLIAgentRunner
 from clients.retry import ClientError
 
 
+@pytest.fixture(autouse=True)
+def no_retry_delays(monkeypatch):
+    monkeypatch.setattr("clients.retry.time.sleep", lambda _: None)
+
+
 def _completed(stdout="", returncode=0, stderr=""):
     return subprocess.CompletedProcess(
-        args=["claude"], returncode=returncode, stdout=stdout, stderr=stderr)
+        args=["codex"], returncode=returncode, stdout=stdout, stderr=stderr)
 
 
-def _cli_json(result="ok", model="claude-sonnet-5", usd=0.0123,
-              in_tok=1200, out_tok=450, subtype="success", is_error=False):
-    return json.dumps({
-        "type": "result",
-        "subtype": subtype,
-        "is_error": is_error,
-        "api_error_status": None,
-        "result": result,
-        "stop_reason": "end_turn",
-        "total_cost_usd": usd,
-        "usage": {"input_tokens": in_tok, "output_tokens": out_tok,
-                  "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0},
-        "modelUsage": {model: {"inputTokens": in_tok, "outputTokens": out_tok,
-                               "cacheReadInputTokens": 0,
-                               "cacheCreationInputTokens": 0,
-                               "webSearchRequests": 0, "costUSD": usd}},
-    })
+def _codex_jsonl(result="ok", in_tok=1200, out_tok=450, *, failed=None):
+    events = [
+        {"type": "thread.started", "thread_id": "test"},
+        {"type": "turn.started"},
+    ]
+    if failed is not None:
+        events.append({"type": "turn.failed", "error": {"message": failed}})
+    else:
+        events.extend([
+            {"type": "item.completed", "item": {
+                "id": "item_1", "type": "agent_message", "text": result}},
+            {"type": "turn.completed", "usage": {
+                "input_tokens": in_tok, "cached_input_tokens": 0,
+                "output_tokens": out_tok}},
+        ])
+    return "\n".join(json.dumps(event) for event in events) + "\n"
 
 
 def _patch(monkeypatch, *, stdout=None, returncode=0, stderr="", capture=None):
     if stdout is None:
-        stdout = _cli_json()
+        stdout = _codex_jsonl()
 
     def fake_run(cmd, **kwargs):
         if capture is not None:
@@ -52,78 +55,61 @@ def _patch(monkeypatch, *, stdout=None, returncode=0, stderr="", capture=None):
     monkeypatch.setattr(runner_mod.subprocess, "run", fake_run)
 
 
-def _run(runner, *, tools=(), model="claude-sonnet-5"):
+def _run(runner, *, tools=(), model="gpt-5.6-terra"):
     return runner.run(name="writer", system="SYS", user="USER", model=model,
                       tools=list(tools), max_tokens=8000, logger=None)
 
 
-# ---- happy path ------------------------------------------------------------
-def test_returns_result_text(monkeypatch):
-    _patch(monkeypatch, stdout=_cli_json(result="Hello world"))
-    out = _run(CLIAgentRunner())
-    assert out == "Hello world"
+def test_returns_last_agent_message(monkeypatch):
+    _patch(monkeypatch, stdout=_codex_jsonl(result="Hello world"))
+    assert _run(CLIAgentRunner()) == "Hello world"
 
 
-def test_records_carry_usd_and_resolved_model(monkeypatch):
-    _patch(monkeypatch, stdout=_cli_json(
-        model="claude-sonnet-5", usd=0.05, in_tok=100, out_tok=200))
+def test_records_subscription_usage(monkeypatch):
+    _patch(monkeypatch, stdout=_codex_jsonl(in_tok=100, out_tok=200))
     runner = CLIAgentRunner()
-    _run(runner, model="sonnet")  # alias in, full id echoed back by CLI
-    assert len(runner.records) == 1
-    rec = runner.records[0]
-    assert rec == {"agent": "writer", "model": "claude-sonnet-5",
-                   "input_tokens": 100, "output_tokens": 200, "usd": 0.05}
+    _run(runner, model="gpt-5.6-sol")
+    assert runner.records == [{
+        "agent": "writer", "model": "gpt-5.6-sol",
+        "input_tokens": 100, "output_tokens": 200, "usd": 0.0,
+    }]
 
 
-def test_usage_falls_back_to_top_level_when_no_modelusage(monkeypatch):
-    data = json.loads(_cli_json(in_tok=7, out_tok=9, usd=0.9))
-    del data["modelUsage"]
-    _patch(monkeypatch, stdout=json.dumps(data))
-    runner = CLIAgentRunner()
-    _run(runner, model="claude-opus-4-8")
-    rec = runner.records[0]
-    assert rec["input_tokens"] == 7 and rec["output_tokens"] == 9
-    assert rec["usd"] == 0.9
-    assert rec["model"] == "claude-opus-4-8"  # falls back to the requested id
-
-
-# ---- argv construction -----------------------------------------------------
-def test_argv_no_tools(monkeypatch):
+def test_argv_no_tools_is_ephemeral_and_has_no_local_shell(monkeypatch):
     cap = {}
     _patch(monkeypatch, capture=cap)
-    _run(CLIAgentRunner(claude_bin="/opt/claude"), tools=[])
+    _run(CLIAgentRunner(codex_bin="/opt/codex"), tools=[])
     cmd = cap["cmd"]
-    assert cmd[0] == "/opt/claude"
-    assert cmd[1:3] == ["-p", "USER"]
-    assert "--model" in cmd and cmd[cmd.index("--model") + 1] == "claude-sonnet-5"
-    assert "--system-prompt" in cmd and cmd[cmd.index("--system-prompt") + 1] == "SYS"
-    assert "--safe-mode" in cmd
-    assert "--output-format" in cmd and cmd[cmd.index("--output-format") + 1] == "json"
-    # tools disabled, no permission bypass
-    assert cmd[cmd.index("--tools") + 1] == ""
-    assert "--permission-mode" not in cmd
+    assert cmd[:4] == ["/opt/codex", "exec", "--model", "gpt-5.6-terra"]
+    assert "--ephemeral" in cmd and "--ignore-user-config" in cmd
+    assert "--ignore-rules" in cmd and "--json" in cmd
+    assert "shell_tool" in cmd and "unified_exec" in cmd
+    assert 'web_search="disabled"' in cmd
+    assert cap["kwargs"]["input"] == "SYS\n\n---\n\nUSER"
 
 
 def test_argv_websearch_gated(monkeypatch):
     cap = {}
     _patch(monkeypatch, capture=cap)
     _run(CLIAgentRunner(), tools=["WebSearch"])
-    cmd = cap["cmd"]
-    assert cmd[cmd.index("--tools") + 1] == "WebSearch"
-    assert cmd[cmd.index("--permission-mode") + 1] == "bypassPermissions"
+    assert 'web_search="live"' in cap["cmd"]
 
 
-def test_api_key_stripped_from_env(monkeypatch):
-    # Force subscription auth: any ambient API key must not reach the CLI, or it
-    # would take precedence and bill per-token.
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-be-dropped")
+def test_unsupported_tool_fails_before_spawn():
+    with pytest.raises(ClientError, match="unsupported Codex tools"):
+        _run(CLIAgentRunner(), tools=["Bash"])
+
+
+def test_api_credentials_stripped_from_env(monkeypatch):
+    for key in ("OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN"):
+        monkeypatch.setenv(key, "must-be-dropped")
     cap = {}
     _patch(monkeypatch, capture=cap)
     _run(CLIAgentRunner())
-    assert "ANTHROPIC_API_KEY" not in cap["kwargs"]["env"]
+    for key in ("OPENAI_API_KEY", "CODEX_API_KEY", "CODEX_ACCESS_TOKEN"):
+        assert key not in cap["kwargs"]["env"]
 
 
-# ---- failures --------------------------------------------------------------
 def test_nonzero_exit_raises(monkeypatch):
     _patch(monkeypatch, stdout="", returncode=1, stderr="boom")
     with pytest.raises(ClientError):
@@ -136,14 +122,14 @@ def test_non_json_stdout_raises(monkeypatch):
         _run(CLIAgentRunner())
 
 
-def test_is_error_raises(monkeypatch):
-    _patch(monkeypatch, stdout=_cli_json(is_error=True, subtype="error_during_execution"))
-    with pytest.raises(ClientError):
+def test_turn_failure_raises(monkeypatch):
+    _patch(monkeypatch, stdout=_codex_jsonl(failed="model unavailable"))
+    with pytest.raises(ClientError, match="model unavailable"):
         _run(CLIAgentRunner())
 
 
 def test_empty_result_raises(monkeypatch):
-    _patch(monkeypatch, stdout=_cli_json(result="   "))
+    _patch(monkeypatch, stdout=_codex_jsonl(result="   "))
     with pytest.raises(RuntimeError):
         _run(CLIAgentRunner())
 

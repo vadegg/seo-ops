@@ -148,7 +148,7 @@ def test_novel_post_does_not_warn(project, deps_factory):
             assert parts[2] not in {"WARNING", "ERROR"}, line
 
 
-def test_step_never_blocks_pipeline(project, deps_factory):
+def test_duplicate_body_blocks_assembly_and_publication(project, deps_factory):
     # Even an exact duplicate still lets humanizer+assembler+publisher run.
     th_path = project.backlog_dir / "topic_history.json"
     th_path.write_text(json.dumps({"published": [
@@ -160,7 +160,72 @@ def test_step_never_blocks_pipeline(project, deps_factory):
         project, run_date="2026-05-19",
         step_names=["uniqueness", "humanizer", "assembler", "publisher"],
         dry_run=True, deps=deps)
-    assert rc == 0
+    assert rc == 1
     store = ArtifactStore(project.runs_dir / "2026-05-19")
-    assert store.exists(A.ASSEMBLER)
-    assert store.exists(A.PUBLISHER)
+    assert not store.exists(A.ASSEMBLER)
+    assert not store.exists(A.PUBLISHER)
+
+
+# ---- corpus source: the blog clone, not topic_history ----------------------
+# topic_history entries carry no ``body`` in production, so a corpus built
+# from them alone is always empty (corpus_size: 0 in every run 05.2026–08.2026)
+# and the guard never fires. The real corpus is the cloned Astro content
+# collection the Publisher writes into.
+def _seed_blog_clone(project, files: dict[str, str]) -> "Path":
+    from pathlib import Path
+    d = (Path(project.runs_dir) / "_blog_repo" / project.blog_posts_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    for name, body in files.items():
+        (d / name).write_text(body, encoding="utf-8")
+    return d
+
+
+def test_published_corpus_reads_the_blog_content_collection(project, tmp_path):
+    d = _seed_blog_clone(project, {
+        "2026-05-19-switching-costs.md":
+            "---\ntitle: Switching costs\nslug: switching-costs\n---\n\n" + NOVEL})
+    th = tmp_path / "topic_history.json"
+    th.write_text(json.dumps({"published": []}), encoding="utf-8")
+    corpus = published_corpus(th, blog_content_dir=d)
+    assert len(corpus) == 1
+    assert corpus[0]["slug"] == "switching-costs"
+    assert "Switching costs decide" in corpus[0]["body"]
+
+
+def test_published_corpus_excludes_todays_own_post(project, tmp_path):
+    d = _seed_blog_clone(project, {
+        "2026-05-19-today.md": "---\nslug: today\n---\n\n" + NOVEL,
+        "2026-05-01-older.md": "---\nslug: older\n---\n\n" + UNRELATED})
+    th = tmp_path / "topic_history.json"
+    th.write_text(json.dumps({"published": []}), encoding="utf-8")
+    corpus = published_corpus(th, blog_content_dir=d,
+                              exclude_prefix="2026-05-19-")
+    assert [c["slug"] for c in corpus] == ["older"]
+
+
+def test_step_warns_on_near_duplicate_of_a_post_in_the_blog_clone(
+        project, deps_factory):
+    """The regression that let one topic ship eight times: history has no
+    bodies, so the guard must read the clone to see the published post."""
+    _seed_blog_clone(project, {
+        "2026-05-01-switching-costs.md":
+            "---\nslug: switching-costs\n---\n\n" + NOVEL})
+    _seed_through_editor(project, deps_factory, NEAR_DUP)
+    assert _run_uniqueness(project, deps_factory) == 0
+    art = ArtifactStore(project.runs_dir / "2026-05-19").read_json(A.UNIQUENESS)
+    assert art["corpus_size"] == 1
+    assert art["max_similarity"] > 0.55
+    assert art["above_threshold"] is True
+    assert "switching-costs" in _runlog(project)
+
+
+def test_step_warns_when_the_corpus_is_empty(project, deps_factory):
+    """A missing/empty corpus scores 0.0 for everything — the guard is off.
+    That must be visible in the run telemetry, not silently 'ok'."""
+    _seed_through_editor(project, deps_factory, NOVEL)
+    assert _run_uniqueness(project, deps_factory) == 0
+    art = ArtifactStore(project.runs_dir / "2026-05-19").read_json(A.UNIQUENESS)
+    assert art["corpus_size"] == 0
+    log = _runlog(project)
+    assert "INACTIVE" in log
+    assert "WARNING" in log

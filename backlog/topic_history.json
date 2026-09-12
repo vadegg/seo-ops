@@ -561,6 +561,238 @@
       "url": "https://blog.glasgow.works/blog/how-to-analyse-survey-data-qualitatively",
       "date": "2026-07-18",
       "escalation_stage": 1
+    },
+    {
+      "topic": "Survey Bots and Fake Responses in UX Research: How to Detect and Prevent Data Contamination",
+      "keyword": "survey bots and fake responses in UX research",
+      "slug": "survey-bots-fake-responses-ux-research",
+      "url": "https://blog.glasgow.works/blog/survey-bots-fake-responses-ux-research",
+      "date": "2026-07-19",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "How to Detect Fake Survey Respondents in Research",
+      "keyword": "how to detect fake survey respondents in research",
+      "slug": "how-to-detect-fake-survey-respondents",
+      "url": "https://blog.glasgow.works/blog/how-to-detect-fake-survey-respondents",
+      "date": "2026-07-19",
+      "escalation_stage": 2
+    },
+    {
+      "topic": "UX Research Panel Management: How to Build and Maintain a Participant Panel for Continuous Research",
+      "keyword": "UX research panel management",
+      "slug": "ux-research-panel-management",
+      "url": "https://blog.glasgow.works/blog/ux-research-panel-management",
+      "date": "2026-07-20",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "First Click Testing in UX Research: How to Run It and What It Tells You",
+      "keyword": "first click testing ux",
+      "slug": "first-click-testing-ux-research",
+      "url": "https://blog.glasgow.works/blog/first-click-testing-ux-research",
+      "date": "2026-07-21",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Voice of Customer Programs for B2B SaaS: A Research-Ops Framework",
+      "keyword": "voice of customer program for b2b saas",
+      "slug": "voice-of-customer-program-b2b-saas",
+      "url": "https://blog.glasgow.works/blog/voice-of-customer-program-b2b-saas",
+      "date": "2026-07-22",
+      "escalation_stage": 2
+    },
+    {
+      "topic": "AI-Moderated Interviews vs Human Moderators: When Each One Holds Up",
+      "keyword": "AI-moderated interviews vs human-moderated research",
+      "slug": "ai-moderated-vs-human-moderated-research",
+      "url": "https://blog.glasgow.works/blog/ai-moderated-vs-human-moderated-research",
+      "date": "2026-07-23",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "When to Outsource User Research: An Agency vs In-House Decision Framework",
+      "keyword": "when to outsource user research: agency vs in-house",
+      "slug": "when-to-outsource-user-research-agency-vs-in-house",
+      "url": "https://blog.glasgow.works/blog/when-to-outsource-user-research-agency-vs-in-house",
+      "date": "2026-07-25",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "AI-Moderated Interviews: When They Work and How to Run Them",
+      "keyword": "AI-moderated interviews",
+      "slug": "ai-moderated-interviews-when-how-to-run",
+      "url": "https://blog.glasgow.works/blog/ai-moderated-interviews-when-how-to-run",
+      "date": "2026-07-26",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "How to Validate AI-Generated Research Insights (and Catch Hallucinated Themes)",
+      "keyword": "validate AI-generated research insights",
+      "slug": "validate-ai-generated-research-insights",
+      "url": "https://blog.glasgow.works/blog/validate-ai-generated-research-insights",
+      "date": "2026-07-27",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "How to Test AI Agents: A UX Research Playbook for Agentic Features",
+      "keyword": "how to test AI agents",
+      "slug": "how-to-test-ai-agents",
+      "url": "https://blog.glasgow.works/blog/how-to-test-ai-agents",
+      "date": "2026-07-29",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "Concept Testing: How to Run a Product Concept Test That Produces a Decision",
+      "keyword": "concept testing",
+      "slug": "concept-testing",
+      "url": "https://blog.glasgow.works/blog/concept-testing",
+      "date": "2026-07-31",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "How B2B Buyers Use AI to Research and Shortlist Vendors (and What It Means for Your Research)",
+      "keyword": "how B2B buyers use AI to research vendors",
+      "slug": "how-b2b-buyers-use-ai-to-research-vendors",
+      "url": "https://blog.glasgow.works/blog/how-b2b-buyers-use-ai-to-research-vendors",
+      "date": "2026-08-01",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "How to Detect Fake and AI-Generated Participants in User Research",
+      "keyword": "detect fake and AI-generated participants in user research",
+      "slug": "detect-fake-ai-generated-participants-user-research",
+      "url": "https://blog.glasgow.works/blog/detect-fake-ai-generated-participants-user-research",
+      "date": "2026-08-21",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "How Much Does User Research Cost? A Pricing Guide by Method and Delivery Model",
+      "keyword": "how much does user research cost",
+      "slug": "how-much-does-user-research-cost",
+      "url": "https://blog.glasgow.works/blog/how-much-does-user-research-cost",
+      "date": "2026-08-24",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "The B2B Buyer Research Process: How to Map Your Buying Committee and Purchase Journey with Research",
+      "keyword": "b2b buyer research process",
+      "slug": "b2b-buyer-research-process",
+      "url": "https://blog.glasgow.works/blog/b2b-buyer-research-process",
+      "date": "2026-08-26",
+      "escalation_stage": 1
+    },
+    {
+      "topic": "Empathy Mapping in UX Research: How to Run One (from Real Interview Data)",
+      "keyword": "empathy mapping in UX research",
+      "slug": "empathy-mapping-ux-research",
+      "url": "https://blog.glasgow.works/blog/empathy-mapping-ux-research",
+      "date": "2026-08-27",
+      "escalation_stage": 4
+    },
+    {
+      "topic": "Synthetic Users in UX Research: When AI Participants Help and When They Mislead",
+      "keyword": "synthetic users in UX research",
+      "slug": "synthetic-users-ux-research",
+      "url": "https://blog.glasgow.works/blog/synthetic-users-ux-research",
+      "date": "2026-08-28",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "AI Notetaker Consent & Privacy in User Research: A 2026 Compliance Playbook",
+      "keyword": "AI notetaker consent and privacy for user research",
+      "slug": "ai-notetaker-consent-privacy-user-research",
+      "url": "https://blog.glasgow.works/blog/ai-notetaker-consent-privacy-user-research",
+      "date": "2026-08-30",
+      "escalation_stage": 4
+    },
+    {
+      "topic": "How to Run a UX Benchmarking Study: Metrics, Baselines, and Tracking Over Time",
+      "keyword": "how to run a UX benchmarking study",
+      "slug": "how-to-run-a-ux-benchmarking-study",
+      "url": "https://blog.glasgow.works/blog/how-to-run-a-ux-benchmarking-study",
+      "date": "2026-08-31",
+      "escalation_stage": 4
+    },
+    {
+      "topic": "How to Choose a User Research Agency: The Questions to Ask Before You Hire",
+      "keyword": "how to choose a user research agency",
+      "slug": "how-to-choose-a-user-research-agency",
+      "url": "https://blog.glasgow.works/blog/how-to-choose-a-user-research-agency",
+      "date": "2026-09-01",
+      "escalation_stage": 4
+    },
+    {
+      "topic": "Thematic Analysis in UX Research: A Step-by-Step Guide to Coding Interview Data",
+      "keyword": "thematic analysis in UX research",
+      "slug": "thematic-analysis-ux-research",
+      "url": "https://blog.glasgow.works/blog/thematic-analysis-ux-research",
+      "date": "2026-09-02",
+      "escalation_stage": 4
+    },
+    {
+      "topic": "How to Run a Customer Segmentation Research Study: Methods, Data, and Actionable Segments",
+      "keyword": "how to run a customer segmentation research study",
+      "slug": "how-to-run-a-customer-segmentation-research-study",
+      "url": "https://blog.glasgow.works/blog/how-to-run-a-customer-segmentation-research-study",
+      "date": "2026-09-03",
+      "escalation_stage": 4
+    },
+    {
+      "topic": "SUS vs UMUX-Lite vs SUPR-Q: Choosing a Standardised Usability Questionnaire",
+      "keyword": "usability questionnaires compared: SUS vs UMUX-Lite vs SUPR-Q",
+      "slug": "sus-vs-umux-lite-vs-supr-q",
+      "url": "https://blog.glasgow.works/blog/sus-vs-umux-lite-vs-supr-q",
+      "date": "2026-09-04",
+      "escalation_stage": 4
+    },
+    {
+      "topic": "MaxDiff Analysis for Feature Prioritisation: How to Design and Analyse a MaxDiff Study",
+      "keyword": "MaxDiff analysis for feature prioritisation",
+      "slug": "maxdiff-analysis-feature-prioritisation",
+      "url": "https://blog.glasgow.works/blog/maxdiff-analysis-feature-prioritisation",
+      "date": "2026-09-05",
+      "escalation_stage": 3
+    },
+    {
+      "topic": "Message Testing: How to Test Value Propositions with Research",
+      "keyword": "message testing",
+      "slug": "message-testing-value-propositions",
+      "url": "https://blog.glasgow.works/blog/message-testing-value-propositions",
+      "date": "2026-09-06",
+      "escalation_stage": 4
+    },
+    {
+      "topic": "How to Evaluate and Choose AI User Research Tools: A Buyer's Framework",
+      "keyword": "how to choose AI user research tools",
+      "slug": "how-to-choose-ai-user-research-tools",
+      "url": "https://blog.glasgow.works/blog/how-to-choose-ai-user-research-tools",
+      "date": "2026-09-07",
+      "escalation_stage": 4
+    },
+    {
+      "topic": "Conjoint Analysis for Pricing and Feature Prioritisation: How to Design, Run, and Interpret a Conjoint Study",
+      "keyword": "conjoint analysis for feature prioritisation",
+      "slug": "conjoint-analysis-feature-prioritisation-pricing",
+      "url": "https://blog.glasgow.works/blog/conjoint-analysis-feature-prioritisation-pricing",
+      "date": "2026-09-08",
+      "escalation_stage": 4
+    },
+    {
+      "topic": "How to Run a Cognitive Walkthrough: A Step-by-Step UX Evaluation Guide",
+      "keyword": "how to run a cognitive walkthrough",
+      "slug": "how-to-run-a-cognitive-walkthrough",
+      "url": "https://blog.glasgow.works/blog/how-to-run-a-cognitive-walkthrough",
+      "date": "2026-09-09",
+      "escalation_stage": 4
+    },
+    {
+      "topic": "How to Test Voice AI and Conversational Interfaces",
+      "keyword": "how to test voice AI and conversational UI",
+      "slug": "how-to-test-voice-ai-conversational-ui",
+      "url": "https://blog.glasgow.works/blog/how-to-test-voice-ai-conversational-ui",
+      "date": "2026-09-10",
+      "escalation_stage": 4
     }
   ]
 }

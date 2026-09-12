@@ -3,7 +3,7 @@
 Two entry points share one set of step functions (``pipeline.steps``):
 
 * ``run_pipeline`` — the no-flag full daily run. Owns the escalation
-  ladder (steps 1–2) and the publish guarantee, then drives steps 3–7.
+  ladder (steps 1–2) and quality checks, then drives the remaining steps.
 * ``run_selected_steps`` — runs an explicit subset of steps in isolation
   (single pass at ``start_stage``, no auto-escalation).
 
@@ -18,17 +18,20 @@ import secrets
 import sys
 import traceback
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from logging_setup import escalation_log, get_agent_logger, setup_run_logging
 from pipeline import artifacts as A
+from pipeline import dedupe
 from pipeline import steps as S
 from pipeline.artifacts import ArtifactStore
 from pipeline.escalation import SCORE_THRESHOLD, EscalationLadder
 from pipeline.steps import (StepContext, gather_research_context,
                             researcher_pass, run_steps, strategist_pass)
 from clients.websearch import tools_for_stage
+from clients.retry import ClientError, PermanentClientError
+from pipeline.quality import QualityError, topic_rejection
 
 
 @dataclass
@@ -40,6 +43,7 @@ class PipelineDeps:
     git: object
     telegram: object      # fatal-crash-only alert (see run_pipeline except)
     fleet: object         # ark-agent-fleet run report (primary result channel)
+    deployment: object = None
 
 
 def default_deps(cfg, logger) -> PipelineDeps:
@@ -48,23 +52,26 @@ def default_deps(cfg, logger) -> PipelineDeps:
     from clients.fleet import FleetClient
     from clients.git_client import GitClient
     from clients.gsc import GSCClient
+    from clients.deployment import DeploymentClient
     from clients.telegram import TelegramClient
 
     from agents.runner import CLIAgentRunner
 
     return PipelineDeps(
-        agent_runner=CLIAgentRunner(claude_bin=cfg.claude_bin,
-                                    timeout=cfg.claude_timeout),
+        agent_runner=CLIAgentRunner(codex_bin=cfg.codex_bin,
+                                    timeout=cfg.codex_timeout),
         gsc=GSCClient(cfg.gsc_service_account_json, cfg.gsc_site_url, logger),
-        dataforseo=DataForSEOClient(cfg.dataforseo_login,
-                                    cfg.dataforseo_password, logger),
+        dataforseo=(DataForSEOClient(cfg.dataforseo_login,
+                                    cfg.dataforseo_password, logger)
+                    if cfg.dataforseo_login and cfg.dataforseo_password else None),
         evidence=EvidenceClient(cfg.evidence_dir, logger),
         git=GitClient(cfg.blog_repo_url, cfg.git_deploy_key, cfg.blog_branch,
-                      cfg.runs_dir / "_blog_repo", logger),
+                      cfg.runs_dir / "_blog_repo", logger, node_bin=cfg.node_bin),
         telegram=TelegramClient(cfg.telegram_bot_token, cfg.telegram_chat_id,
                                 logger),
         fleet=FleetClient(cfg.ark_repo, cfg.ark_zoo, no_sync=cfg.ark_no_sync,
                           node_bin=cfg.node_bin, logger=logger),
+        deployment=DeploymentClient(timeout=cfg.deployment_timeout),
     )
 
 
@@ -80,7 +87,9 @@ def _load_text(path: Path) -> str:
 
 
 def _load_stores(cfg) -> dict:
+    from pipeline.performance import planning_context, read_latest
     return {
+        "performance_context": planning_context(read_latest(cfg.performance_dir)),
         "backlog": _load_store(cfg.backlog_dir / "keyword_backlog.json",
                                {"candidates": []}),
         "topic_history": _load_store(
@@ -101,6 +110,24 @@ def _build_context(cfg, deps, run_date, *, dry_run, stage, force, logger):
         dry_run=dry_run, stage=stage, force=force, logger=logger)
 
 
+def _refresh_catalog(ctx):
+    """Include externally published posts when choosing topics and links."""
+    from pipeline.performance import post_catalog
+    posts_dir = ctx.cfg.runs_dir / "_blog_repo" / ctx.cfg.blog_posts_dir
+    if not posts_dir.is_dir():
+        return
+    catalog = post_catalog(posts_dir, ctx.cfg.blog_base_url)
+    history = ctx.stores["topic_history"].setdefault("published", [])
+    links = ctx.stores["internal_links"].setdefault("posts", [])
+    history_slugs = {p.get("slug") for p in history}
+    link_slugs = {p.get("slug") for p in links}
+    for post in catalog:
+        if post["slug"] not in history_slugs:
+            history.append({**post, "topic": post["title"], "keyword": post["title"]})
+        if post["slug"] not in link_slugs:
+            links.append(post)
+
+
 def _research_and_select(ctx: StepContext, ladder: EscalationLadder):
     """Full-run steps 1–2 with the escalation ladder. Resumes from
     artifacts; otherwise loops Researcher+Strategist, escalating while the
@@ -108,11 +135,16 @@ def _research_and_select(ctx: StepContext, ladder: EscalationLadder):
     store = ctx.store
     if store.exists(A.STRATEGIST) and store.exists(A.RESEARCHER):
         topic = store.read_json(A.STRATEGIST)
-        ladder.stage = int(topic.get("_escalation_stage", ladder.stage))
-        ctx.stage = ladder.stage
-        ctx.logger.info("resume: steps 1–2 from artifacts (stage %s)",
-                        ladder.stage)
-        return store.read_json(A.RESEARCHER), topic
+        if not topic_rejection(topic, ctx.stores["topic_history"]):
+            ladder.stage = int(topic.get("_escalation_stage", ladder.stage))
+            ctx.stage = ladder.stage
+            ctx.logger.info("resume: approved steps 1–2 (stage %s)", ladder.stage)
+            return store.read_json(A.RESEARCHER), topic
+        # A failed selection must not be accepted by a subsequent resume.
+        for step in S.STEPS:
+            store.path(step.output).unlink(missing_ok=True)
+        for name in (A.EVIDENCE, A.EDITOR_CRITIQUE, A.ASSEMBLER_META):
+            store.path(name).unlink(missing_ok=True)
 
     topic: dict = {"score": 0.0}
     while True:
@@ -123,7 +155,8 @@ def _research_and_select(ctx: StepContext, ladder: EscalationLadder):
                         spec.approach)
 
         gsc_rows, dfs_metrics, api_failed = gather_research_context(
-            ctx.cfg, ctx.deps, spec, ctx.logger)
+            ctx.cfg, ctx.deps, spec, ctx.logger, ctx.research_cache)
+        store.write_json(A.RESEARCH_CONTEXT, ctx.research_cache)
 
         if api_failed and not ladder.at_guarantee() and spec.stage <= 2:
             ladder.escalate("required API unavailable")
@@ -131,14 +164,17 @@ def _research_and_select(ctx: StepContext, ladder: EscalationLadder):
 
         ctx.stage = ladder.stage
         orch_logger = ctx.logger
-        ctx.logger = get_agent_logger("researcher")
         try:
+            ctx.logger = get_agent_logger("researcher")
             researcher_pass(ctx, spec, model, tools, gsc_rows, dfs_metrics)
-        finally:
-            ctx.logger = orch_logger
-        ctx.logger = get_agent_logger("strategist")
-        try:
+            ctx.logger = get_agent_logger("strategist")
             topic = strategist_pass(ctx, model, ladder.stage)
+        except PermanentClientError:
+            raise
+        except ClientError as exc:
+            if ladder.escalate(f"agent failed after retries: {exc}"):
+                continue
+            raise
         finally:
             ctx.logger = orch_logger
 
@@ -146,18 +182,15 @@ def _research_and_select(ctx: StepContext, ladder: EscalationLadder):
         ctx.logger.info("strategist score=%.3f threshold=%.2f",
                         score, SCORE_THRESHOLD)
 
-        if score >= SCORE_THRESHOLD:
+        # A high score says nothing about whether we already covered this.
+        # The text-level guard (uniqueness) cannot help here: same-topic
+        # posts written from scratch share almost no phrasing. Compare the
+        # topic itself, and spend an escalation stage looking for another.
+        reason = topic_rejection(topic, ctx.stores["topic_history"])
+        if not reason:
             break
-        if ladder.at_guarantee():
-            # Accepting a below-threshold topic at the ceiling IS a
-            # degradation — WARN so the report doesn't read as a clean run.
-            ctx.logger.warning("escalation ceiling reached (stage %d) — "
-                               "accepting best available topic (score %.2f "
-                               "below %.2f)", ladder.stage, score,
-                               SCORE_THRESHOLD)
-            break
-        if not ladder.escalate(f"topic score {score:.2f} below threshold"):
-            break  # ceiling reached — accept best available
+        if not ladder.escalate(reason):
+            raise QualityError(f"no publishable topic at escalation ceiling: {reason}")
 
     return store.read_json(A.RESEARCHER), topic
 
@@ -198,11 +231,25 @@ def run_pipeline(cfg, *, run_date: str, dry_run: bool = False,
         ladder = EscalationLadder(cfg, run_dir, logger,
                                   start_stage=start_stage)
 
-        _research_and_select(ctx, ladder)
-        ctx.stage = ladder.stage
-
-        run_steps(ctx, ["outliner", "writer", "editor", "uniqueness",
-                        "humanizer", "assembler", "publisher"])
+        pending = (ctx.store.read_json(A.PUBLISHER)
+                   if ctx.store.exists(A.PUBLISHER) else {})
+        if pending.get("status") == "pushed":
+            run_steps(ctx, ["publisher"])
+        else:
+            deps.git.ensure_clone()
+            _refresh_catalog(ctx)
+            if not dry_run and hasattr(deps.gsc, "analytics"):
+                from pipeline.performance import refresh_report, planning_context
+                try:
+                    report = refresh_report(cfg, deps.gsc,
+                        deps.git.repo_path / cfg.blog_posts_dir, today=date.today())
+                    ctx.stores["performance_context"] = planning_context(report)
+                except Exception as exc:
+                    logger.warning("SEO performance report unavailable; retaining last report: %s", exc)
+            _research_and_select(ctx, ladder)
+            ctx.stage = ladder.stage
+            run_steps(ctx, ["outliner", "writer", "editor", "uniqueness",
+                            "humanizer", "assembler", "publisher"])
 
         status = ctx.store.read_json(A.PUBLISHER)
         logger.info("=== run complete status=%s ===", status["status"])
@@ -233,7 +280,7 @@ def run_pipeline(cfg, *, run_date: str, dry_run: bool = False,
         # Last-resort out-of-band ping: if the ark/VPS itself is down the fleet
         # report may not deliver, so a fatal crash still pings Telegram.
         try:
-            if deps and getattr(deps, "telegram", None):
+            if not dry_run and deps and getattr(deps, "telegram", None):
                 deps.telegram.send(
                     f"Пайплайн упал на {run_date}: {str(exc)[:1500]}",
                     level="hard")
@@ -307,6 +354,9 @@ def run_selected_steps(cfg, *, run_date: str, step_names: list[str],
     try:
         ctx = _build_context(cfg, deps, run_date, dry_run=dry_run,
                              stage=start_stage, force=force, logger=logger)
+        if {"researcher", "strategist", "uniqueness"}.intersection(step_names):
+            deps.git.ensure_clone()
+            _refresh_catalog(ctx)
         run_steps(ctx, step_names)
         logger.info("=== selected steps complete ===")
         # Same end-of-run telemetry as a full run, but manual: write the

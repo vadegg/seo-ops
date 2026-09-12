@@ -104,7 +104,8 @@ class FakeRunner:
                     "![Researcher observing a usability test](/img/test.png)\n"),
                 "critique": {"checklist": {
                     "on_brief": True, "style_guide": True, "seo": True,
-                    "internal_links": True, "evidence_grounded": True},
+                    "internal_links": True, "evidence_grounded": True,
+                    "first_hand_present": True},
                     "passed": True, "notes": "clean"}})
         if name == "humanizer":
             # The Humanizer emits Markdown (not JSON), like the Writer.
@@ -128,7 +129,8 @@ class FailingEditorRunner(FakeRunner):
                 "edited_markdown": "## Body\n\nText.\n",
                 "critique": {"checklist": {
                     "on_brief": True, "style_guide": False, "seo": True,
-                    "internal_links": True, "evidence_grounded": True},
+                    "internal_links": True, "evidence_grounded": True,
+                    "first_hand_present": True},
                     "passed": False, "notes": "style issues"}})
         return super()._canned(name=name, model=model)
 
@@ -186,9 +188,20 @@ class FakeGit:
         self.written[rel_path] = content
         return Path(rel_path)
 
+    def assert_unique_slug(self, rel_path, slug, posts_dir):
+        pass
+
+    def validate(self):
+        pass
+
     def commit_and_push(self, rel_paths, message, push=True):
         self.pushed = push
         return "deadbeef"
+
+
+class FakeDeployment:
+    def wait_for_post(self, url, title):
+        return {"verified": True, "http_status": 200, "verified_at": "2026-05-19T01:00:00Z"}
 
 
 class FakeTelegram:
@@ -218,7 +231,7 @@ def project(tmp_path) -> Config:
     # Static config copied as-is; the two volatile stores accumulate real
     # published data in the repo, so seed them empty for deterministic tests.
     for rel in ("backlog/seed_topics.md", "themes/content_map.md",
-                "themes/internal_links.json", "style_guide.md"):
+                "style_guide.md"):
         src = ROOT / rel
         dst = tmp_path / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -230,6 +243,34 @@ def project(tmp_path) -> Config:
     (tmp_path / "backlog" / "topic_history.json").write_text(
         json.dumps({"schema": "topic_history/v1", "published": []}),
         encoding="utf-8")
+    # internal_links is volatile too (the Publisher appends to it on every
+    # real run), so seed a small fixed corpus instead of copying the repo's:
+    # a copy grows with production state and silently changes what tests see
+    # (e.g. pushing the freshly published post out of llms.txt's top-50).
+    (tmp_path / "themes").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "themes" / "internal_links.json").write_text(json.dumps({
+        "schema": "internal_links/v1",
+        "hubs": {"ux-research-methods": "/blog/ux-research-methods",
+                 "research-operations": "/blog/research-operations",
+                 "product-discovery": "/blog/product-discovery"},
+        "posts": [
+            {"cluster": "user interviews & discussion guides",
+             "url": "https://blog.glasgow.works/blog/how-to-conduct-user-interviews",
+             "slug": "how-to-conduct-user-interviews",
+             "title": "How to Conduct User Interviews", "date": "2026-05-01"},
+            {"cluster": "usability testing (moderated vs unmoderated)",
+             "url": "https://blog.glasgow.works/blog/guerrilla-usability-testing",
+             "slug": "guerrilla-usability-testing",
+             "title": "Guerrilla Usability Testing", "date": "2026-05-02"},
+            {"cluster": "research operations",
+             "url": "https://blog.glasgow.works/blog/research-repository",
+             "slug": "research-repository",
+             "title": "Building a Research Repository", "date": "2026-05-03"},
+            {"cluster": "product discovery",
+             "url": "https://blog.glasgow.works/blog/continuous-discovery",
+             "slug": "continuous-discovery",
+             "title": "Continuous Discovery in Practice", "date": "2026-05-04"},
+        ]}), encoding="utf-8")
     evidence_dir = tmp_path / "evidence"
     evidence_dir.mkdir()
     (evidence_dir / "notes.md").write_text(
@@ -255,11 +296,12 @@ def deps_factory():
     from pipeline.orchestrator import PipelineDeps
 
     def make(runner=None, gsc=None, dfs=None, evidence=None,
-             git=None, tg=None, fleet=None):
+             git=None, tg=None, fleet=None, deployment=None):
         return PipelineDeps(
             agent_runner=runner or FakeRunner(),
             gsc=gsc or FakeGSC(), dataforseo=dfs or FakeDFS(),
             evidence=evidence or FakeEvidence(), git=git or FakeGit(),
-            telegram=tg or FakeTelegram(), fleet=fleet or FakeFleet())
+            telegram=tg or FakeTelegram(), fleet=fleet or FakeFleet(),
+            deployment=deployment or FakeDeployment())
 
     return make

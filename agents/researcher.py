@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 
+from . import history
 from .runner import run_json
 from .validation import validate_researcher
 
@@ -20,7 +21,9 @@ of keyword/topic candidates with genuine ranking potential and intent fit.
 
 Rules:
 - Prefer striking-distance and low-competition, high-intent terms.
-- Exclude anything already in topic_history (dedupe).
+- Exclude anything already in topic_history (dedupe) — including
+  rephrasings of a covered topic (a different keyword for the same
+  article is a duplicate, not a new candidate).
 - Every candidate must be relevant to a UX/market-research audience.
 - Be honest about weak candidates; do not pad the list.
 - Score every candidate 0..1 on the same axes as the Strategist
@@ -46,20 +49,23 @@ extras to persist for future days (may be empty).
 def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
         stage_spec, backlog: dict, topic_history: dict,
         gsc_rows: list | None, dfs_metrics: list | None,
-        seed_topics: str | None) -> dict:
+        seed_topics: str | None, performance_context: str = "") -> dict:
     user = f"""Escalation stage {stage_spec.stage}: {stage_spec.approach}
 
 ## backlog/keyword_backlog.json (cheap reserve — consider first)
 {json.dumps(backlog.get('candidates', []), ensure_ascii=False)[:6000]}
 
-## Already published (DO NOT repeat) — topic_history
-{json.dumps([p.get('topic') or p.get('keyword') for p in topic_history.get('published', [])], ensure_ascii=False)[:4000]}
+## Already published (DO NOT repeat, and do not rephrase) — newest first
+{history.render_published(topic_history)}
 
 ## GSC near-top queries (may be empty / unavailable)
 {json.dumps(gsc_rows or [], ensure_ascii=False)[:6000]}
 
 ## DataForSEO metrics (may be empty / unavailable)
 {json.dumps(dfs_metrics or [], ensure_ascii=False)[:6000]}
+
+## Performance of existing pages (dated observations, not new-topic suggestions)
+{performance_context}
 
 ## Evergreen seed list (use at stage 4, or for inspiration)
 {(seed_topics or '')[:4000] if stage_spec.use_seed_list else '(not this stage)'}
