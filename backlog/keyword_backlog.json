@@ -1,6 +1,6 @@
 {
   "schema": "keyword_backlog/v1",
-  "updated": "2026-09-10",
+  "updated": "2026-09-12",
   "note": "Scored unused candidates (score 0..1 + date). Researcher reads here first (cheap reserve before paid APIs). After each publish the Publisher folds in the day's non-selected candidates + surplus, then prunes: drops already-published and below-floor entries, keeps the top-N by score.",
   "candidates": [
     {
@@ -14,14 +14,14 @@
       "date": "2026-08-28"
     },
     {
+      "keyword": "AI product evals vs user testing: what each actually tells you",
+      "score": 0.64,
+      "date": "2026-07-29"
+    },
+    {
       "keyword": "message testing: how to test value propositions with research",
       "score": 0.63,
       "date": "2026-07-23"
-    },
-    {
-      "keyword": "AI product evals vs user testing: what each actually tells you",
-      "score": 0.63,
-      "date": "2026-07-29"
     },
     {
       "keyword": "prompt research: how to find the questions buyers ask AI about your category",
@@ -212,6 +212,11 @@
       "keyword": "how to design a user interview discussion guide",
       "score": 0.55,
       "date": "2026-09-09"
+    },
+    {
+      "keyword": "prototype fidelity for usability testing",
+      "score": 0.55,
+      "date": "2026-09-12"
     },
     {
       "keyword": "user research participant incentives: how much to pay (by method and audience)",
