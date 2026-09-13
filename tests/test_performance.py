@@ -96,3 +96,27 @@ def test_gsc_paginates_before_filtering_near_top_queries(tmp_path):
     assert rows[0]["query"] == "opportunity"
     assert [r["startRow"] for r in requests] == [0, 1, 2]
     assert all(r["dataState"] == "final" for r in requests)
+
+
+def test_redirected_search_rows_keep_clicks_and_do_not_create_self_overlap():
+    from pipeline.performance import canonical_rows
+    known = {"https://blog.test/blog/one/"}
+    aliases = {"https://blog.test/old": "https://blog.test/blog/one/"}
+    rows = [{"keys": ["question", "https://blog.test/old"], "clicks": 2, "impressions": 20, "position": 5},
+            {"keys": ["question", "https://blog.test/blog/one"], "clicks": 1, "impressions": 10, "position": 20}]
+    result = canonical_rows(rows, 1, known, aliases)
+    assert len(result) == 1
+    assert result[0]["clicks"] == 3
+    assert result[0]["impressions"] == 30
+    assert result[0]["position"] == 10
+    assert result[0]["ctr"] == .1
+    assert rows[0]["keys"][1] == "https://blog.test/old"  # preserve raw observations
+
+
+def test_editorial_queue_targets_existing_unsourced_article():
+    posts = [{**POSTS[0], "needs_source_review": True}]
+    report = collect_report(SearchData(), posts, today=date(2026, 9, 12), inspect_limit=0)
+    item = report["editorial_updates"][0]
+    assert item["url"] == POSTS[0]["url"]
+    assert item["action"] == "update_existing_url"
+    assert any("primary evidence" in reason for reason in item["reasons"])

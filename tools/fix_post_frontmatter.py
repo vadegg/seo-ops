@@ -1,5 +1,5 @@
 """One-off repair: bring already-published blog posts into line with the
-Astro content schema (author/authorSlug/category + 150–160 char description).
+Astro content schema (author/authorSlug/category + 80–200 char description).
 
 Reuses the assembler's description-fitting so the result matches what new
 posts produce. Idempotent: skips fields that are already present.

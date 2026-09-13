@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from agents.validation import ValidationError, validate_article_body, validate_editor
+import re
+from urllib.parse import urlsplit
+
+from agents.validation import ValidationError, validate_article_body, validate_editor, validate_outliner
 from pipeline import artifacts as A, dedupe
 from pipeline.escalation import SCORE_THRESHOLD
 
@@ -42,6 +45,25 @@ def require_final_review(ctx) -> None:
     require_review(body, ctx.store.read_json(artifact))
 
 
+def require_source_citations(brief: dict, body: str) -> None:
+    """Check traceability; factual support is still an editorial judgement.
+
+    Validate resumed briefs too. Retrieval belongs to the Outliner; the
+    Editor compares claims with its source excerpts before approving.
+    """
+    try:
+        validate_outliner(brief)
+    except ValidationError as exc:
+        raise QualityError(f"brief requires revision: {exc}") from exc
+    links = set(re.findall(r"(?<!!)\[[^\]\n]+\]\((https://[^\s)]+)\)", body))
+    sources = {source["url"] for source in brief["sources"]}
+    for link in sources - links:
+        raise QualityError(f"verified source is not cited in final body: {link}")
+    for link in links - sources:
+        if urlsplit(link).hostname not in {"glasgow.works", "blog.glasgow.works"}:
+            raise QualityError(f"external citation is missing from verified brief: {link}")
+
+
 def require_publishable(ctx) -> None:
     topic = ctx.store.read_json(A.STRATEGIST)
     reason = topic_rejection(topic, ctx.stores["topic_history"])
@@ -51,6 +73,7 @@ def require_publishable(ctx) -> None:
                    ctx.store.read_json(A.EDITOR_CRITIQUE))
     require_final_review(ctx)
     body = ctx.store.read_text(A.HUMANIZER)
+    require_source_citations(ctx.store.read_json(A.OUTLINER), body)
     try:
         validate_article_body(body)
     except ValidationError as exc:

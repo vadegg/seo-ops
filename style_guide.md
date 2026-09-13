@@ -39,7 +39,7 @@ to practitioner.
 
 ## Formatting
 - Title ≤ 60 chars, includes the primary keyword naturally.
-- Meta description 140–160 chars, benefit-led.
+- Meta description 80–200 chars, benefit-led.
 - Sentence case headings. Markdown. No H1 in body (frontmatter owns it).
 
 ## AI clichés to avoid (Humanizer, #39)

@@ -230,7 +230,7 @@ def step_outliner(ctx: StepContext) -> None:
                  if corpus >= ctx.cfg.internal_link_min_corpus else 0)
     brief = outliner.run(
         ctx.deps.agent_runner, model=model_for_stage(ctx.cfg, stage),
-        tools=tools_for_stage(stage), max_tokens=ctx.cfg.agent_max_tokens,
+        tools=["WebSearch"], max_tokens=ctx.cfg.agent_max_tokens,
         logger=ctx.logger, topic=topic,
         content_map=ctx.stores["content_map"],
         internal_links=relevant, min_links=min_links)

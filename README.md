@@ -39,7 +39,7 @@ today makes a re-run a **no-op** (idempotent).
 
 Strategist scores the topic 0..1; below `SCORE_THRESHOLD` → next stage,
 logged as a "degraded to level N" WARN (surfaced in the run report). Stage
-4 is API-independent but still requires a score ≥ 0.62 and a distinct topic.
+4 selects topics independently of GSC/DataForSEO but still requires a score ≥ 0.62 and a distinct topic.
 Billing/authentication failures stop retries immediately; usable GSC data survives a
 DataForSEO outage. Transient CLI failures preserve their JSONL diagnostics and retry.
 The editor gets three attempts; a failed final checklist blocks publication.
@@ -47,6 +47,23 @@ Missing or failed uniqueness checks also block assembly/publication. The humaniz
 must preserve links, numbers and headings, and changed text gets a final editorial
 review; otherwise the approved draft is retained. Every escalation is in
 `runs/<date>/escalation.log`.
+
+Every Outliner pass has live web access for primary-source verification,
+independent of topic-selection stage. Its brief must include source URLs,
+publishers, check dates, supported claims and short supporting excerpts, plus
+a usable original deliverable and the specific difference from an existing
+article. The Editor checks those claims and the deliverable. Final publication
+requires the verified citations to remain in the body; resumed old briefs
+must meet this contract too. This is a traceability gate, not automated proof
+that every statement is true. A rejected brief/draft remains available for
+revision; forcing the Outliner invalidates dependent outputs.
+
+Descriptions must be complete text of 80–200 characters. The assembler
+normalises whitespace and rejects lengths outside that range; it never pads
+or truncates a sentence. It emits one of five `hub` values so future posts
+automatically receive an incoming link from their topic guide. Reviewed intent
+aliases in `pipeline/dedupe.py` block known thematic-analysis, buyer-research
+and B2B-recruitment duplicates while preserving distinct specialist questions.
 
 ## Persistent stores
 

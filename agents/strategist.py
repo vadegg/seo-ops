@@ -38,7 +38,8 @@ Output ONE JSON object, no prose:
   "secondary_keywords": [str],
   "search_intent": "informational|commercial|navigational",
   "cluster": str,            // content-map cluster/subtopic this feeds
-  "pillar_hub_slug": str,    // e.g. "ux-research-methods" or "" if none
+  "pillar_hub_slug": str,    // product-research, ux-research-methods,
+                            // research-operations, insight-to-impact, product-discovery
   "angle": str,              // the specific take, 1 sentence
   "score": number,           // 0..1, calibrated
   "rationale": str

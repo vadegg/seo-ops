@@ -13,8 +13,8 @@ from dataclasses import dataclass
 # blog/src/lib/metadata.ts). A post violating these fails `astro build`
 # on Cloudflare Pages, which would break the deploy of the whole site —
 # so the assembler enforces them and fails loudly instead.
-META_DESCRIPTION_MIN_LENGTH = 150
-META_DESCRIPTION_MAX_LENGTH = 160
+META_DESCRIPTION_MIN_LENGTH = 80
+META_DESCRIPTION_MAX_LENGTH = 200
 _REQUIRED_FRONTMATTER = ("title", "description", "slug", "author", "authorSlug")
 
 
@@ -27,61 +27,9 @@ def _normalize_meta_description(value: str) -> str:
     return re.sub(r"\s+", " ", (value or "").strip())
 
 
-# Neutral, always-truthful tails (longest first) to lift a description the
-# LLM left just short of the 150-char floor. Symmetric with the over-long
-# trim below: a deterministic fit keeps the autonomous run from aborting on
-# a near-miss. Graded so a clean, self-contained tail lands most gaps in the
-# window; a description too short for even the richest tail to reach the
-# floor still can't be salvaged — the caller raises in that case.
-_META_PAD_TAILS = (
-    "A practical, evidence-led guide from the Glasgow Research team.",
-    "Learn how the Glasgow Research team approaches it in practice.",
-    "A practical, evidence-led Glasgow Research guide.",
-    "A practical guide from the Glasgow Research team.",
-    "A practical Glasgow Research guide.",
-    "Learn more from Glasgow Research.",
-    "A Glasgow Research guide.",
-    "Learn more here.",
-    "Read on.",
-)
-
-
-def _pad_meta_description(d: str) -> str:
-    """Lift a too-short (but non-empty) description to the 150–160 window.
-    Prefer a complete tail whose total lands cleanly in the window; if none
-    fits, append words from the richest tail up to the ceiling so we still
-    hit the window whenever the padded text can reach the floor at all."""
-    for tail in _META_PAD_TAILS:
-        cand = f"{d} {tail}"
-        if META_DESCRIPTION_MIN_LENGTH <= len(cand) <= META_DESCRIPTION_MAX_LENGTH:
-            return cand
-    padded = d
-    for word in _META_PAD_TAILS[0].split():
-        nxt = f"{padded} {word}"
-        if len(nxt) > META_DESCRIPTION_MAX_LENGTH:
-            break
-        padded = nxt
-    return padded
-
-
 def _fit_meta_description(value: str) -> str:
-    """Normalize, then fit a description into the blog's 150–160 window. LLMs
-    reliably overshoot, so an over-long value is trimmed at a word boundary;
-    a value that lands just short of the floor is padded with a neutral,
-    truthful brand tail. Both are deterministic and keep the autonomous run
-    from aborting. A value too short for even the padded tail to reach the
-    floor can't be invented — the caller raises in that case.
-    """
-    d = _normalize_meta_description(value)
-    if len(d) and len(d) < META_DESCRIPTION_MIN_LENGTH:
-        d = _pad_meta_description(d)
-    if len(d) > META_DESCRIPTION_MAX_LENGTH:
-        cut = d[:META_DESCRIPTION_MAX_LENGTH]
-        sp = cut.rfind(" ")
-        if sp >= META_DESCRIPTION_MIN_LENGTH:  # only break on a word if it still fits
-            cut = cut[:sp]
-        d = cut.rstrip(" ,.;:—-")
-    return d
+    """Preserve editorial meaning; never truncate or pad to a character quota."""
+    return _normalize_meta_description(value)
 
 
 @dataclass
@@ -191,6 +139,10 @@ def assemble(*, edited_markdown: str, brief: dict, topic: dict,
     description = _fit_meta_description(brief.get("meta_description", ""))
     category = (brief.get("category") or topic.get("category")
                 or default_category).strip() or default_category
+    hub = topic.get("pillar_hub_slug") or "product-research"
+    if hub not in {"product-research", "ux-research-methods", "research-operations",
+                   "insight-to-impact", "product-discovery"}:
+        raise AssemblyError(f"unknown pillar hub: {hub}")
 
     # Hard gate: a post that fails the blog's Zod schema would break the
     # Cloudflare `astro build` for the entire site. Fail here instead.
@@ -246,6 +198,7 @@ def assemble(*, edited_markdown: str, brief: dict, topic: dict,
         f"author: {_yaml_escape(author_name)}",
         f"authorSlug: {_yaml_escape(author_slug)}",
         f"category: {_yaml_escape(category)}",
+        f"hub: {_yaml_escape(hub)}",
         "draft: false",
         f"heroImageAlt: {_yaml_escape(hero_alt or 'illustration')}",
         "tags:",

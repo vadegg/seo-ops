@@ -28,6 +28,7 @@ class FakeRunner:
         self.records: list[dict] = []
 
     def run(self, *, name, system, user, model, tools, max_tokens, logger):
+        assert not set(tools) - {"WebSearch"}, "Match the real CLI's supported tool contract"
         self.calls.append(name)
         out = self._canned(name=name, model=model)
         self.records.append({
@@ -79,6 +80,15 @@ class FakeRunner:
                 "secondary_keywords": ["how many users", "nielsen 5 users"],
                 "target_word_count": 1200,
                 "jsonld_type": "BlogPosting",
+                "sources": [{
+                    "url": "https://www.nngroup.com/articles/why-you-only-need-to-test-with-5-users/",
+                    "publisher": "Nielsen Norman Group", "checked_on": "2026-05-19",
+                    "claim": "The five-user recommendation assumes iterative testing.",
+                    "supporting_excerpt": "run as many small tests as you can afford"}],
+                "original_value": {"deliverable": "Task coverage matrix",
+                    "reader_task": "Plan iterative usability rounds",
+                    "closest_existing_url": "/blog/ux-research-methods/",
+                    "difference": "The hub selects methods; this plans task coverage."},
                 "sections": [{"h2": "The 5-user rule, in context",
                               "key_points": ["origin", "limits"],
                               "word_count": 600,
@@ -93,7 +103,8 @@ class FakeRunner:
                     "The widely cited five-user figure comes from a specific "
                     "model, not a universal law. Read the [research methods]"
                     "(/blog/ux-research-methods) hub for the bigger picture.\n\n"
-                    "![](/img/test.png)\n")
+                    "![](/img/test.png)\n"
+                    "[Iterative testing](https://www.nngroup.com/articles/why-you-only-need-to-test-with-5-users/)\n")
         if name == "editor":
             return json.dumps({
                 "edited_markdown": (
@@ -101,7 +112,8 @@ class FakeRunner:
                     "The widely cited five-user figure comes from a specific "
                     "cost-benefit model, not a universal law. See our "
                     "[research methods](/blog/ux-research-methods) hub.\n\n"
-                    "![Researcher observing a usability test](/img/test.png)\n"),
+                    "![Researcher observing a usability test](/img/test.png)\n"
+                    "[Iterative testing](https://www.nngroup.com/articles/why-you-only-need-to-test-with-5-users/)\n"),
                 "critique": {"checklist": {
                     "on_brief": True, "style_guide": True, "seo": True,
                     "internal_links": True, "evidence_grounded": True,
@@ -116,7 +128,8 @@ class FakeRunner:
                 "earn its keep on tight, task-focused rounds. For the wider "
                 "picture, our [research methods](/blog/ux-research-methods) "
                 "hub walks through when it breaks.\n\n"
-                "![Researcher observing a usability test](/img/test.png)\n")
+                "![Researcher observing a usability test](/img/test.png)\n"
+                    "[Iterative testing](https://www.nngroup.com/articles/why-you-only-need-to-test-with-5-users/)\n")
         raise AssertionError(f"unexpected agent {name}")
 
 

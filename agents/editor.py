@@ -26,10 +26,15 @@ of these forbidden elements, remove them before returning it.
 The checklist (all must be true to pass):
 - on_brief: covers the brief's sections, intent, and word target
 - style_guide: voice, British spelling, no hype/emoji, evidence-led
-- seo: check the brief's title<=60 and meta 150-160; in the body, use the
+- seo: check the brief's title<=60 and meta 80-200; in the body, use the
   primary keyword naturally and good H2s. Report metadata issues in notes.
-- internal_links: only the brief's anchor/URL pairs, placed naturally
+- internal_links: internal links use the brief's anchor/URL pairs naturally;
+  verified public source links from the brief are also allowed and required
 - evidence_grounded: non-obvious claims supported, no fabricated stats
+- Within evidence_grounded, compare claims with the brief's source excerpts.
+  Remove unsupported prices, features, universal sample sizes and results.
+- Within on_brief, require the original_value deliverable to be usable,
+  not just a suggestion that the reader should create it later.
 - first_hand_present: any first-hand example is directly supported by relevant
   evidence, or is omitted when evidence is insufficient; hypothetical examples
   are labelled as such. Never force a case from unrelated passages.

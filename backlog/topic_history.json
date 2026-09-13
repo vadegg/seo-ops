@@ -232,7 +232,9 @@
       "slug": "how-to-recruit-b2b-interview-participants",
       "url": "https://blog.glasgow.works/blog/how-to-recruit-b2b-interview-participants",
       "date": "2026-06-01",
-      "escalation_stage": 1
+      "escalation_stage": 1,
+      "canonical_url": "https://blog.glasgow.works/blog/recruiting-b2b-interview-participants/",
+      "consolidated_on": "2026-09-13"
     },
     {
       "topic": "Pricing Research for B2B SaaS: How to Find Out What to Charge",
@@ -680,7 +682,9 @@
       "slug": "b2b-buyer-research-process",
       "url": "https://blog.glasgow.works/blog/b2b-buyer-research-process",
       "date": "2026-08-26",
-      "escalation_stage": 1
+      "escalation_stage": 1,
+      "canonical_url": "https://blog.glasgow.works/blog/b2b-buyer-research-methods/",
+      "consolidated_on": "2026-09-13"
     },
     {
       "topic": "Empathy Mapping in UX Research: How to Run One (from Real Interview Data)",
@@ -728,7 +732,9 @@
       "slug": "thematic-analysis-ux-research",
       "url": "https://blog.glasgow.works/blog/thematic-analysis-ux-research",
       "date": "2026-09-02",
-      "escalation_stage": 4
+      "escalation_stage": 4,
+      "canonical_url": "https://blog.glasgow.works/blog/thematic-analysis-qualitative-research/",
+      "consolidated_on": "2026-09-13"
     },
     {
       "topic": "How to Run a Customer Segmentation Research Study: Methods, Data, and Actionable Segments",

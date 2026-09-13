@@ -81,6 +81,11 @@ def duplicate_of_published(topic: dict, topic_history: dict | None) -> dict | No
     fields of every published entry: a duplicate usually arrives with a
     reworded title *and* a reworded keyword, and either one matching is
     enough to call it covered."""
+    reviewed = reviewed_intent(topic.get("primary_keyword", ""))
+    if reviewed:
+        for entry in (topic_history or {}).get("published", []):
+            if reviewed_intent(entry.get("keyword", "")) == reviewed:
+                return entry
     probes = [kw_tokens(topic.get("topic")),
               kw_tokens(topic.get("primary_keyword"))]
     probes = [p for p in probes if p]
@@ -93,4 +98,25 @@ def duplicate_of_published(topic: dict, topic_history: dict | None) -> dict | No
             for t in targets:
                 if near_duplicate(p, t):
                     return entry
+    return None
+
+
+# Editorial decisions from the September 2026 archive review. These exact
+# intent aliases supplement token similarity without swallowing specialist
+# subtopics such as codebook comparison or buyer interviews for AI products.
+_REVIEWED_INTENTS = {
+    "thematic-analysis-qualitative-research": (
+        "thematic analysis qualitative research", "thematic analysis ux research"),
+    "b2b-buyer-research-methods": (
+        "b2b buyer research methods", "b2b buyer research process"),
+    "recruiting-b2b-interview-participants": (
+        "how to recruit b2b interview participants", "recruiting b2b interview participants"),
+}
+
+
+def reviewed_intent(keyword: str) -> str | None:
+    probe = kw_tokens(keyword)
+    for canonical, aliases in _REVIEWED_INTENTS.items():
+        if probe in {kw_tokens(alias) for alias in aliases}:
+            return canonical
     return None

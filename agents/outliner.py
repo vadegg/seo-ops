@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 
 from .runner import run_json
 from .validation import validate_outliner
@@ -14,6 +15,12 @@ execute without guessing.
 
 Requirements:
 - Search-intent-matched structure; cover the query better than page-1.
+- Verify primary sources before drafting. Record exact public URLs, publishers,
+  check dates, and short excerpts supporting the material claims. Never invent
+  URLs, quotations, product features or test results.
+- Plan a usable original deliverable (filled example, worksheet, decision
+  matrix or reproducible procedure). Explain how its reader task differs from
+  the closest existing article; another keyword is not another reader task.
 - Plan internal links ONLY from the provided internal-links map (use
   real URLs from it; never invent URLs). When the map offers enough
   relevant targets, distribute AT LEAST the requested minimum across
@@ -21,19 +28,22 @@ Requirements:
 - Include one section that invites a first-hand, anonymised example
   (set "first_hand_example": true on it) so the Writer can ground the
   post in real agency experience when evidence supports it.
-- Specify a JSON-LD type appropriate to the page (usually "BlogPosting";
-  use "FAQPage" only if a genuine FAQ section exists).
+- The site template owns BlogPosting; do not plan inline JSON-LD.
 - Per-section word-count targets that sum near the total.
 
 Output ONE JSON object, no prose:
 {
   "title": str,                 // <= 60 chars, primary keyword natural
   "slug": str,                  // kebab-case
-  "meta_description": str,      // 150-160 chars, benefit-led
+  "meta_description": str,      // 80-200 chars, complete benefit-led sentence
   "primary_keyword": str,
   "secondary_keywords": [str],
   "target_word_count": int,     // 1100-1800 typical
-  "jsonld_type": "BlogPosting|FAQPage",
+  "jsonld_type": "BlogPosting",
+  "sources": [{"url": str, "publisher": str, "checked_on": "YYYY-MM-DD",
+               "claim": str, "supporting_excerpt": str}],
+  "original_value": {"deliverable": str, "reader_task": str,
+                     "closest_existing_url": str, "difference": str},
   "sections": [
     {"h2": str, "key_points": [str], "word_count": int,
      "internal_links": [{"anchor": str, "url": str}],
@@ -52,7 +62,9 @@ def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
                  f"(it has enough relevant targets)."
                  if min_links else
                  "Plan internal links from the map below where relevant.")
-    user = f"""## Chosen topic (from Strategist)
+    user = f"""Today's source verification date: {date.today().isoformat()}.
+
+## Chosen topic (from Strategist)
 {json.dumps(topic, ensure_ascii=False)[:4000]}
 
 ## Internal links available (use ONLY these URLs — pre-filtered by relevance)
@@ -62,8 +74,10 @@ def run(runner, *, model: str, tools: list[str], max_tokens: int, logger,
 ## content_map.md (for cluster context)
 {content_map[:4000]}
 
-{"You MAY use WebSearch to study what currently ranks and find the content gap."
- if tools else "Reason from the inputs; no web search this stage."}
+Use the available live web tool to search and read primary sources, then study
+the closest competing answer. Do not treat an uninspected search snippet as
+evidence for a price, product capability or numerical claim.
+Keep supporting excerpts short. If a detail cannot be verified, omit it.
 
 Return the brief JSON object now."""
 

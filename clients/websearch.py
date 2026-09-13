@@ -1,10 +1,8 @@
 """Web search integration.
 
-Web search is the Claude Agent SDK built-in tool. It is not a standalone
-HTTP client: the orchestrator grants the ``WebSearch`` tool to the
-Researcher/Strategist/Outliner agents on escalation stages 2–4, and the
-agent decides when to call it. This module just centralises the tool
-name so the wiring lives in one place.
+``WebSearch`` enables live web access in the CLI runner. The Researcher
+uses it according to its escalation stage. The Outliner always receives
+it to verify sources after a topic has been selected, including stage 1.
 """
 
 from __future__ import annotations

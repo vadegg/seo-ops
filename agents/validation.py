@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import math
 import re
+from datetime import date
+from urllib.parse import urlsplit
 
 EDITOR_CHECKS = ("on_brief", "style_guide", "seo", "internal_links",
                  "evidence_grounded", "first_hand_present")
@@ -71,6 +73,30 @@ def validate_outliner(data) -> None:
     _nonempty_str(d, "title", "outliner")
     if not isinstance(d.get("sections"), list) or not d["sections"]:
         raise ValidationError("outliner: 'sections' must be a non-empty list")
+    description = re.sub(r"\s+", " ", str(d.get("meta_description", "")).strip())
+    if not 80 <= len(description) <= 200:
+        raise ValidationError("outliner: meta_description must be 80-200 characters; rewrite, do not truncate")
+    if re.search(r"\b(?:and|or|the|a|an|to|for|with|of|by|so)$", description, re.I):
+        raise ValidationError("outliner: meta_description ends with an unfinished phrase")
+    sources = d.get("sources")
+    if not isinstance(sources, list) or not sources:
+        raise ValidationError("outliner: verified primary sources are required")
+    for source in sources:
+        source = _require_dict(source, "outliner source")
+        for key in ("url", "publisher", "checked_on", "claim", "supporting_excerpt"):
+            _nonempty_str(source, key, "outliner source")
+        url = urlsplit(source["url"])
+        if url.scheme != "https" or not url.hostname or url.username or url.password:
+            raise ValidationError("outliner: source must be a public HTTPS URL")
+        try:
+            checked = date.fromisoformat(source["checked_on"])
+        except ValueError as exc:
+            raise ValidationError("outliner: invalid source check date") from exc
+        if checked > date.today():
+            raise ValidationError("outliner: source check date is in the future")
+    value = _require_dict(d.get("original_value"), "outliner original_value")
+    for key in ("deliverable", "reader_task", "closest_existing_url", "difference"):
+        _nonempty_str(value, key, "outliner original_value")
 
 
 def validate_article_body(body) -> None:

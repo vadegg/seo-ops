@@ -20,6 +20,12 @@ Hard rules:
   specific client. If evidence is sensitive, abstract it.
 - British spelling. Evidence-led, plain, calm. No hype, no emoji, no
   fabricated statistics.
+- Cite verified public sources beside the claims they support. An excerpt
+  supports only its recorded claim, not additional numbers or promises.
+- Produce the brief's original_value deliverable in full. Label invented
+  examples as hypothetical, never as agency engagements or hands-on tool tests.
+- Product capabilities and prices need a dated primary source. Omit details
+  that the supplied sources cannot support instead of guessing.
 """
 
 

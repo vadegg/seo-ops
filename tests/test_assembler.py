@@ -118,14 +118,14 @@ def test_assemble_frontmatter_and_body():
 
 def test_frontmatter_has_required_schema_fields():
     """Astro content collection requires author + authorSlug; description
-    must be 150–160 chars. Missing these breaks the Cloudflare build."""
+    must be 80–200 chars. Missing these breaks the Cloudflare build."""
     md = _assemble(_brief()).markdown
     assert 'author: "Vadim Glazkov"' in md
     assert 'authorSlug: "vadim"' in md
     assert 'category: "Research"' in md
     m = re.search(r'^description: "(.*)"$', md, re.MULTILINE)
     assert m is not None
-    assert 150 <= len(m.group(1)) <= 160
+    assert 80 <= len(m.group(1)) <= 200
 
 
 def test_frontmatter_has_updated_date_and_reading_time():
@@ -150,33 +150,21 @@ def test_description_too_short_raises():
         _assemble(_brief(meta_description="too short"))
 
 
-def test_description_near_miss_short_is_padded_into_window():
-    # LLMs also undershoot; a description a few chars below the 150 floor is
-    # padded with a neutral, truthful brand tail rather than aborting the run
-    # (the real 2026-07-13 failure: 144 chars).
-    near = ("Learn how to plan, run, and report a heuristic evaluation in "
-            "real product teams — including when it beats usability testing "
-            "and when it doesn't.")
-    assert 140 <= len(near) < 150
-    md = _assemble(_brief(meta_description=near)).markdown
-    m = re.search(r'^description: "(.*)"$', md, re.MULTILINE)
-    assert m is not None
-    assert 150 <= len(m.group(1)) <= 160
-    # the original description is preserved, only extended
-    assert m.group(1).startswith("Learn how to plan, run, and report")
+def test_description_is_preserved_without_padding_or_truncation():
+    for description in (
+        "Learn how to plan, run, and report a heuristic evaluation in real "
+        "product teams — including when it beats usability testing and when it does not.",
+        "This description deliberately exceeds the old one hundred and sixty "
+        "character ceiling, but its complete final sentence should survive "
+        "assembly without being cut off in the middle.",
+    ):
+        md = _assemble(_brief(meta_description=description)).markdown
+        assert f'description: "{description}"' in md
 
 
-def test_description_too_long_is_clamped_into_window():
-    # LLMs reliably overshoot; an over-long description is trimmed to the
-    # 150-160 window at a word boundary rather than aborting the run.
-    long_desc = ("This is a deliberately over-long meta description that "
-                 "keeps going well past the one hundred and sixty character "
-                 "ceiling so the assembler has to clamp it down to size.")
-    assert len(long_desc) > 160
-    md = _assemble(_brief(meta_description=long_desc)).markdown
-    m = re.search(r'^description: "(.*)"$', md, re.MULTILINE)
-    assert m is not None
-    assert 150 <= len(m.group(1)) <= 160
+def test_description_over_limit_requires_rewriting():
+    with pytest.raises(AssemblyError, match="80-200"):
+        _assemble(_brief(meta_description="An excessively long sentence. " * 10))
 
 
 def test_description_whitespace_normalized_for_length_check():
@@ -185,5 +173,5 @@ def test_description_whitespace_normalized_for_length_check():
     padded = "   " + ("y " * 78).strip() + "   "  # -> 155 chars normalized
     md = _assemble(_brief(meta_description=padded)).markdown
     m = re.search(r'^description: "(.*)"$', md, re.MULTILINE)
-    assert 150 <= len(m.group(1)) <= 160
+    assert 80 <= len(m.group(1)) <= 200
     assert "  " not in m.group(1)  # collapsed
