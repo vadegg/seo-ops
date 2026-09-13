@@ -14,6 +14,7 @@ keep the test suite free of third-party dependencies and network.
 from __future__ import annotations
 
 import math
+import re
 
 EDITOR_CHECKS = ("on_brief", "style_guide", "seo", "internal_links",
                  "evidence_grounded", "first_hand_present")
@@ -72,10 +73,25 @@ def validate_outliner(data) -> None:
         raise ValidationError("outliner: 'sections' must be a non-empty list")
 
 
+def validate_article_body(body) -> None:
+    """Body-only contract shared by editorial retries and publication checks."""
+    if not isinstance(body, str) or not body.strip():
+        raise ValidationError("article body must be a non-empty string")
+    if body.lstrip().startswith("---"):
+        raise ValidationError("article body contains YAML frontmatter; remove "
+                              "the metadata block and return only the body")
+    if re.search(r"^#\s", body, re.M):
+        raise ValidationError("article body contains H1; remove the title "
+                              "heading and start body headings at H2")
+    if re.search(r"<script\b", body, re.I):
+        raise ValidationError("article body contains script tags; remove them")
+
+
 def validate_editor(data) -> None:
     d = _require_dict(data, "editor")
     if not isinstance(d.get("edited_markdown"), str) or not d["edited_markdown"].strip():
         raise ValidationError("editor: 'edited_markdown' must be a non-empty string")
+    validate_article_body(d["edited_markdown"])
     if not isinstance(d.get("critique"), dict):
         raise ValidationError("editor: 'critique' must be an object")
     critique = d["critique"]

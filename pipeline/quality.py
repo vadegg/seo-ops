@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import re
-
-from agents.validation import validate_editor
+from agents.validation import ValidationError, validate_article_body, validate_editor
 from pipeline import artifacts as A, dedupe
 from pipeline.escalation import SCORE_THRESHOLD
 
@@ -53,9 +51,10 @@ def require_publishable(ctx) -> None:
                    ctx.store.read_json(A.EDITOR_CRITIQUE))
     require_final_review(ctx)
     body = ctx.store.read_text(A.HUMANIZER)
-    if (not body.strip() or body.lstrip().startswith("---")
-            or re.search(r"^#\s|<script\b", body, re.M | re.I)):
-        raise QualityError("article body is empty or contains H1/frontmatter/script")
+    try:
+        validate_article_body(body)
+    except ValidationError as exc:
+        raise QualityError(str(exc)) from exc
     if not ctx.store.exists(A.UNIQUENESS):
         raise QualityError("uniqueness check is required before assembly/publication")
     if ctx.store.read_json(A.UNIQUENESS).get("above_threshold"):

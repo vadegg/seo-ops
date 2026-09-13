@@ -4,8 +4,9 @@ import json
 
 import pytest
 
+from agents import editor
 from agents.runner import run_json
-from agents.validation import (ValidationError, validate_researcher,
+from agents.validation import (EDITOR_CHECKS, ValidationError, validate_researcher,
                                validate_strategist, validate_outliner,
                                validate_editor)
 from clients.retry import ClientError
@@ -17,9 +18,11 @@ class ScriptedRunner:
     def __init__(self, replies):
         self._replies = list(replies)
         self.calls = 0
+        self.prompts = []
 
     def run(self, *, name, system, user, model, tools, max_tokens, logger):
         self.calls += 1
+        self.prompts.append(user)
         return self._replies.pop(0)
 
 
@@ -72,3 +75,31 @@ def test_each_validator_rejects_bad_shapes():
         validate_outliner({"title": "t", "sections": []})
     with pytest.raises(ValidationError):
         validate_editor({"edited_markdown": "x", "critique": "no"})
+
+
+def _editor_reply(body):
+    return {"edited_markdown": body, "critique": {
+        "checklist": {key: True for key in EDITOR_CHECKS},
+        "passed": True, "notes": "approved"}}
+
+
+@pytest.mark.parametrize("body,reason", [
+    ('---\ntitle: "Top task analysis"\nmeta_description: "Example"\n'
+     'slug: "top-task-analysis"\n---\n\n## Tasks\n\nText.', "frontmatter"),
+    ('\n  ---\ntitle: "Example"\n---\n\nText.', "frontmatter"),
+    ("# Article title\n\n## Tasks\n\nText.", "H1"),
+    ('## Tasks\n\n<script type="application/ld+json">{}</script>', "script"),
+    ('## Tasks\n\n<SCRIPT>alert(1)</SCRIPT>', "script"),
+])
+def test_editor_repairs_invalid_body_before_approval(body, reason):
+    invalid = _editor_reply(body)
+    with pytest.raises(ValidationError, match=reason):
+        validate_editor(invalid)
+    corrected = _editor_reply("## Tasks\n\nText.\n\n---\n\n### Next steps\n")
+    runner = ScriptedRunner([json.dumps(invalid), json.dumps(corrected)])
+    result = editor.run(runner, model="fake", tools=[], max_tokens=100,
+                        logger=None, draft_md="## Tasks\n\nText.", brief={},
+                        style_guide="", evidence_passages=[], iteration=1)
+    assert result == corrected
+    assert runner.calls == 2
+    assert reason in runner.prompts[1]
