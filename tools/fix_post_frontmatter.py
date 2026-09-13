@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from pipeline.assembler import (  # noqa: E402
-    META_DESCRIPTION_MIN_LENGTH, _fit_meta_description, _reading_time)
+    META_DESCRIPTION_MIN_LENGTH, META_DESCRIPTION_MAX_LENGTH, _fit_meta_description, _reading_time)
 
 AUTHOR_NAME = "Vadim Glazkov"
 AUTHOR_SLUG = "vadim"
@@ -40,8 +40,8 @@ def fix(path: Path) -> str:
         if mm:
             raw = mm.group(1)
             fitted = _fit_meta_description(raw)
-            if len(fitted) < META_DESCRIPTION_MIN_LENGTH:
-                changed.append(f"description too short ({len(fitted)}) — left as-is")
+            if not META_DESCRIPTION_MIN_LENGTH <= len(fitted) <= META_DESCRIPTION_MAX_LENGTH:
+                changed.append(f"description outside editorial range ({len(fitted)}) — rewrite required; left as-is")
             else:
                 if fitted != raw:
                     changed.append(f"description {len(raw)}->{len(fitted)}")
